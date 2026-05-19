@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RSS EdgeOne</title>
+  <style>
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #1a1d27;
+      --bg-card: #21242f;
+      --bg-input: #2a2d3a;
+      --text-primary: #e4e6ed;
+      --text-secondary: #8b8fa3;
+      --text-muted: #5c6078;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-active: #4f46e5;
+      --danger: #ef4444;
+      --danger-hover: #f87171;
+      --success: #22c55e;
+      --border: #2e3144;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: 0.2s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 24px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .header-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .header-title span { color: var(--accent); }
+    .api-key-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .api-key-group input {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      width: 220px;
+      outline: none;
+      transition: border var(--transition);
+    }
+    .api-key-group input:focus { border-color: var(--accent); }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-label { font-size: 0.78rem; color: var(--text-secondary); }
+
+    /* Layout */
+    .main-layout {
+      display: flex;
+      min-height: calc(100vh - 64px);
+    }
+    .sidebar {
+      width: 340px;
+      min-width: 340px;
+      border-right: 1px solid var(--border);
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      max-height: calc(100vh - 64px);
+    }
+    .content {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+      max-height: calc(100vh - 64px);
+    }
+
+    /* Section titles */
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    /* Add feed form */
+    .add-feed-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .add-feed-form input {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      transition: border var(--transition);
+    }
+    .add-feed-form input:focus { border-color: var(--accent); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background var(--transition), transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { background: var(--bg-input); color: var(--text-primary); }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid transparent; padding: 4px 10px; font-size: 0.78rem; }
+    .btn-danger:hover { background: rgba(239,68,68,0.12); }
+    .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+
+    /* Feed cards */
+    .feed-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+    }
+    .feed-card:hover { border-color: var(--accent); }
+    .feed-card.active { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+    .feed-card-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .feed-card-url {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 4px;
+    }
+    .feed-card-time { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* Article cards */
+    .article-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 12px;
+      transition: border-color var(--transition);
+    }
+    .article-card:hover { border-color: var(--accent); }
+    .article-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .article-title a {
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .article-title a:hover { color: var(--accent); }
+    .article-meta {
+      display: flex;
+      gap: 14px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .article-summary {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .toolbar .spacer { flex: 1; }
+
+    /* Settings panel */
+    .settings-panel {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .settings-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      padding: 6px 0;
+    }
+    .settings-toggle:hover { color: var(--text-primary); }
+    .settings-toggle .arrow {
+      transition: transform var(--transition);
+      font-size: 0.7rem;
+    }
+    .settings-toggle.open .arrow { transform: rotate(180deg); }
+    .settings-body { display: none; margin-top: 12px; }
+    .settings-body.open { display: block; }
+    .slider-group { margin-bottom: 14px; }
+    .slider-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 4px;
+      background: var(--bg-input);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-input) 50%, var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+      height: 16px;
+      margin-bottom: 8px;
+    }
+    .skeleton.w60 { width: 60%; }
+    .skeleton.w80 { width: 80%; }
+    .skeleton.w40 { width: 40%; }
+    .skeleton.h24 { height: 24px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      box-shadow: var(--shadow);
+      animation: toast-in 0.3s ease;
+      pointer-events: auto;
+      max-width: 360px;
+    }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.info { border-left: 3px solid var(--accent); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Health bar */
+    .health-bar {
+      padding: 14px 24px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .health-bar .dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .health-bar .dot.ok { background: var(--success); }
+    .health-bar .dot.err { background: var(--danger); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .main-layout { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        min-width: 0;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .content { max-height: none; }
+      .header { padding: 12px 16px; }
+      .api-key-group input { width: 160px; }
+      .sidebar, .content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title"><span>RSS</span> EdgeOne</div>
+    <div class="api-key-group">
+      <span class="status-dot" id="sse-dot"></span>
+      <span class="status-label" id="sse-label">未连接</span>
+      <input type="password" id="api-key-input" placeholder="输入 API Key…" autocomplete="off" />
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="main-layout">
+    <!-- Sidebar: feeds -->
+    <aside class="sidebar">
+      <div class="section-title">添加订阅源</div>
+      <div class="add-feed-form">
+        <input type="url" id="feed-url-input" placeholder="RSS 源 URL" />
+        <input type="text" id="feed-title-input" placeholder="标题（可选）" />
+        <button class="btn btn-primary" id="add-feed-btn">添加</button>
+      </div>
+
+      <div class="section-title">订阅源</div>
+      <div id="feeds-list">
+        <div class="skeleton w80"></div>
+        <div class="skeleton w60"></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="settings-panel">
+        <div class="settings-toggle" id="settings-toggle">
+          <span>⚙ 设置</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="settings-body" id="settings-body">
+          <div class="slider-group">
+            <label>
+              <span>时间范围</span>
+              <span id="time-range-value">24 小时</span>
+            </label>
+            <input type="range" id="time-range-slider" min="1" max="168" value="24" />
+          </div>
+          <button class="btn btn-primary btn-sm" id="save-settings-btn">保存设置</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content: articles -->
+    <main class="content">
+      <div class="toolbar">
+        <button class="btn btn-outline btn-sm" id="refresh-articles-btn">刷新文章</button>
+        <button class="btn btn-outline btn-sm" id="fetch-latest-btn">获取最新</button>
+        <button class="btn btn-primary btn-sm" id="trigger-check-btn">触发抓取</button>
+        <div class="spacer"></div>
+        <button class="btn btn-outline btn-sm" id="clear-filter-btn" style="display:none;">✕ 清除筛选</button>
+      </div>
+      <div class="section-title" id="articles-heading">全部文章</div>
+      <div id="articles-list">
+        <div class="skeleton w80 h24"></div>
+        <div class="skeleton w60"></div>
+        <div class="skeleton w40"></div>
+        <div style="height:12px"></div>
+        <div class="skeleton w80 h24"></div>
+        <div class="skeleton w60"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Health bar -->
+  <footer class="health-bar" id="health-bar">正在检查服务状态…</footer>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // ==================== DOM References ====================
+  var apiKeyInput = document.getElementById('api-key-input');
+  var sseDot = document.getElementById('sse-dot');
+  var sseLabel = document.getElementById('sse-label');
+  var feedUrlInput = document.getElementById('feed-url-input');
+  var feedTitleInput = document.getElementById('feed-title-input');
+  var addFeedBtn = document.getElementById('add-feed-btn');
+  var feedsList = document.getElementById('feeds-list');
+  var articlesList = document.getElementById('articles-list');
+  var articlesHeading = document.getElementById('articles-heading');
+  var refreshArticlesBtn = document.getElementById('refresh-articles-btn');
+  var fetchLatestBtn = document.getElementById('fetch-latest-btn');
+  var triggerCheckBtn = document.getElementById('trigger-check-btn');
+  var clearFilterBtn = document.getElementById('clear-filter-btn');
+  var settingsToggle = document.getElementById('settings-toggle');
+  var settingsBody = document.getElementById('settings-body');
+  var timeRangeSlider = document.getElementById('time-range-slider');
+  var timeRangeValue = document.getElementById('time-range-value');
+  var saveSettingsBtn = document.getElementById('save-settings-btn');
+  var healthBar = document.getElementById('health-bar');
+  var toastContainer = document.getElementById('toast-container');
+
+  // ==================== State ====================
+  var feeds = [];
+  var articles = [];
+  var activeFeedId = null;
+  var eventSource = null;
+  var sseRetries = 0;
+  var sseRetryTimer = null;
+
+  // ==================== Helpers ====================
+  function getApiKey() {
+    return localStorage.getItem('rss_api_key') || '';
+  }
+
+  function authHeaders() {
+    var key = getApiKey();
+    var h = { 'Content-Type': 'application/json' };
+    if (key) h['X-API-Key'] = key;
+    return h;
+  }
+
+  function showToast(msg, type) {
+    type = type || 'info';
+    var el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    toastContainer.appendChild(el);
+    setTimeout(function () {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.3s';
+      setTimeout(function () { el.remove(); }, 300);
+    }, 3000);
+  }
+
+  function formatDate(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return iso; }
+  }
+
+  function debounce(fn, delay) {
+    var timer = null;
+    return function () {
+      var self = this, args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(self, args); }, delay);
+    };
+  }
+
+  async function apiFetch(url, options) {
+    options = options || {};
+    var headers = Object.assign({}, authHeaders(), options.headers || {});
+    try {
+      var res = await fetch(url, { method: options.method || 'GET', headers: headers, body: options.body });
+      if (res.status === 401 || res.status === 403) {
+        showToast('认证失败，请检查 API Key', 'error');
+        apiKeyInput.focus();
+        return null;
+      }
+      return res;
+    } catch (e) {
+      showToast('网络错误：' + e.message, 'error');
+      return null;
+    }
+  }
+
+  // ==================== API Key ====================
+  apiKeyInput.value = getApiKey();
+  var saveApiKeyDebounced = debounce(function () {
+    localStorage.setItem('rss_api_key', apiKeyInput.value.trim());
+  }, 400);
+  apiKeyInput.addEventListener('input', saveApiKeyDebounced);
+
+  // ==================== Feeds ====================
+  async function loadFeeds() {
+    feedsList.innerHTML = '<div class="skeleton w80"></div><div class="skeleton w60"></div>';
+    var res = await apiFetch('/api/feeds');
+    if (!res) { feedsList.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+    feeds = await res.json();
+    renderFeeds();
+  }
+
+  function renderFeeds() {
+    if (feeds.length === 0) {
+      feedsList.innerHTML = '<div class="empty-state">暂无订阅源</div>';
+      return;
+    }
+    feedsList.innerHTML = '';
+    feeds.forEach(function (feed) {
+      var card = document.createElement('div');
+      card.className = 'feed-card' + (activeFeedId === feed.id ? ' active' : '');
+      card.innerHTML =
+        '<div class="feed-card-title">' +
+          '<span>' + escapeHtml(feed.title || feed.url) + '</span>' +
+          '<button class="btn btn-danger" data-delete-feed="' + feed.id + '">删除</button>' +
+        '</div>' +
+        '<div class="feed-card-url">' + escapeHtml(feed.url) + '</div>' +
+        '<div class="feed-card-time">' + formatDate(feed.createdAt) + '</div>';
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('[data-delete-feed]')) return;
+        if (activeFeedId === feed.id) {
+          activeFeedId = null;
+          clearFilterBtn.style.display = 'none';
+          articlesHeading.textContent = '全部文章';
+        } else {
+          activeFeedId = feed.id;
+          clearFilterBtn.style.display = '';
+          articlesHeading.textContent = '筛选：' + (feed.title || feed.url);
+        }
+        renderFeeds();
+        renderArticles();
+      });
+      feedsList.appendChild(card);
+    });
+
+    // Delete buttons
+    feedsList.querySelectorAll('[data-delete-feed]').forEach(function (btn) {
+      btn.addEventListener('click', async function (e) {
+        e.stopPropagation();
+        var id = btn.getAttribute('data-delete-feed');
+        var res = await apiFetch('/api/feeds/' + id, { method: 'DELETE' });
+        if (!res) return;
+        if (res.ok) {
+          showToast('订阅源已删除', 'success');
+          if (activeFeedId === id) {
+            activeFeedId = null;
+            clearFilterBtn.style.display = 'none';
+            articlesHeading.textContent = '全部文章';
+          }
+          loadFeeds();
+        } else {
+          var data = await res.json();
+          showToast(data.error || '删除失败', 'error');
+        }
+      });
+    });
+  }
+
+  addFeedBtn.addEventListener('click', async function () {
+    var url = feedUrlInput.value.trim();
+    var title = feedTitleInput.value.trim();
+    if (!url) { showToast('请输入 RSS 源 URL', 'error'); feedUrlInput.focus(); return; }
+    addFeedBtn.disabled = true;
+    addFeedBtn.textContent = '添加中…';
+    var res = await apiFetch('/api/feeds', {
+      method: 'POST',
+      body: JSON.stringify({ url: url, title: title })
+    });
+    addFeedBtn.disabled = false;
+    addFeedBtn.textContent = '添加';
+    if (!res) return;
+    if (res.ok) {
+      showToast('订阅源已添加', 'success');
+      feedUrlInput.value = '';
+      feedTitleInput.value = '';
+      loadFeeds();
+    } else {
+      var data = await res.json();
+      showToast(data.error || '添加失败', 'error');
+    }
+  });
+
+  // ==================== Articles ====================
+  async function loadArticles() {
+    articlesList.innerHTML = '<div class="skeleton w80 h24"></div><div class="skeleton w60"></div><div class="skeleton w40"></div><div style="height:12px"></div><div class="skeleton w80 h24"></div><div class="skeleton w60"></div>';
+    var res = await apiFetch('/api/articles');
+    if (!res) { articlesList.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+    articles = await res.json();
+    renderArticles();
+  }
+
+  function renderArticles() {
+    var filtered = articles;
+    if (activeFeedId) {
+      var feed = feeds.find(function (f) { return f.id === activeFeedId; });
+      if (feed) {
+        filtered = articles.filter(function (a) {
+          return a.feedTitle === feed.title || a.feedTitle === feed.url || a.feedUrl === feed.url;
+        });
+      }
+    }
+    if (filtered.length === 0) {
+      articlesList.innerHTML = '<div class="empty-state">暂无文章</div>';
+      return;
+    }
+    articlesList.innerHTML = '';
+    filtered.forEach(function (article) {
+      var card = document.createElement('div');
+      card.className = 'article-card';
+      card.innerHTML =
+        '<div class="article-title"><a href="' + escapeAttr(article.link) + '" target="_blank" rel="noopener">' + escapeHtml(article.title) + '</a></div>' +
+        '<div class="article-meta">' +
+          '<span>来源：' + escapeHtml(article.feedTitle || '未知') + '</span>' +
+          (article.author ? '<span>作者：' + escapeHtml(article.author) + '</span>' : '') +
+          '<span>' + formatDate(article.pubDate) + '</span>' +
+        '</div>' +
+        (article.summary || article.contentSnippet ? '<div class="article-summary">' + escapeHtml(article.summary || article.contentSnippet || '') + '</div>' : '');
+      articlesList.appendChild(card);
+    });
+  }
+
+  refreshArticlesBtn.addEventListener('click', function () { loadArticles(); });
+  fetchLatestBtn.addEventListener('click', async function () {
+    var res = await apiFetch('/api/latest');
+    if (!res) return;
+    if (res.ok) {
+      articles = await res.json();
+      renderArticles();
+      showToast('已获取最新文章', 'success');
+    }
+  });
+  triggerCheckBtn.addEventListener('click', async function () {
+    triggerCheckBtn.disabled = true;
+    triggerCheckBtn.textContent = '抓取中…';
+    var res = await apiFetch('/api/check', { method: 'POST' });
+    triggerCheckBtn.disabled = false;
+    triggerCheckBtn.textContent = '触发抓取';
+    if (!res) return;
+    if (res.ok) {
+      showToast('抓取已触发', 'success');
+      loadArticles();
+    } else {
+      var data = await res.json();
+      showToast(data.error || '抓取失败', 'error');
+    }
+  });
+  clearFilterBtn.addEventListener('click', function () {
+    activeFeedId = null;
+    clearFilterBtn.style.display = 'none';
+    articlesHeading.textContent = '全部文章';
+    renderFeeds();
+    renderArticles();
+  });
+
+  // ==================== Settings ====================
+  settingsToggle.addEventListener('click', function () {
+    settingsToggle.classList.toggle('open');
+    settingsBody.classList.toggle('open');
+  });
+  timeRangeSlider.addEventListener('input', function () {
+    timeRangeValue.textContent = timeRangeSlider.value + ' 小时';
+  });
+  saveSettingsBtn.addEventListener('click', async function () {
+    var val = Number(timeRangeSlider.value);
+    saveSettingsBtn.disabled = true;
+    var res = await apiFetch('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ timeRangeHours: val })
+    });
+    saveSettingsBtn.disabled = false;
+    if (!res) return;
+    if (res.ok) {
+      showToast('设置已保存', 'success');
+    } else {
+      var data = await res.json();
+      showToast(data.error || '保存失败', 'error');
+    }
+  });
+  async function loadSettings() {
+    var res = await apiFetch('/api/settings');
+    if (!res) return;
+    if (res.ok) {
+      var s = await res.json();
+      timeRangeSlider.value = s.timeRangeHours || 24;
+      timeRangeValue.textContent = (s.timeRangeHours || 24) + ' 小时';
+    }
+  }
+
+  // ==================== SSE ====================
+  function connectSSE() {
+    if (eventSource) { eventSource.close(); }
+    try {
+      eventSource = new EventSource('/ws');
+      eventSource.addEventListener('open', function () {
+        sseDot.className = 'status-dot connected';
+        sseLabel.textContent = '已连接';
+        sseRetries = 0;
+      });
+      eventSource.addEventListener('message', function (e) {
+        try {
+          var data = JSON.parse(e.data);
+          if (data.type === 'new-articles' || data.type === 'articles') {
+            loadArticles();
+          }
+        } catch (err) { /* ignore parse errors */ }
+      });
+      eventSource.addEventListener('error', function () {
+        sseDot.className = 'status-dot';
+        sseLabel.textContent = '未连接';
+        eventSource.close();
+        eventSource = null;
+        scheduleReconnect();
+      });
+    } catch (e) {
+      scheduleReconnect();
+    }
+  }
+
+  function scheduleReconnect() {
+    if (sseRetryTimer) clearTimeout(sseRetryTimer);
+    // Exponential backoff, max 5 minutes (300s)
+    var delay = Math.min(Math.pow(2, sseRetries) * 1000, 300000);
+    sseRetries++;
+    sseRetryTimer = setTimeout(function () { connectSSE(); }, delay);
+  }
+
+  connectSSE();
+
+  // ==================== Health ====================
+  async function checkHealth() {
+    try {
+      var res = await fetch('/api/health');
+      if (res.ok) {
+        var data = await res.json();
+        healthBar.innerHTML =
+          '<span><span class="dot ok"></span>服务正常</span>' +
+          '<span>时间: ' + formatDate(data.timestamp) + '</span>' +
+          '<span>范围: ' + (data.settings && data.settings.timeRangeHours || 24) + 'h</span>';
+      } else {
+        healthBar.innerHTML = '<span><span class="dot err"></span>服务异常</span>';
+      }
+    } catch (e) {
+      healthBar.innerHTML = '<span><span class="dot err"></span>服务不可达</span>';
+    }
+  }
+  checkHealth();
+  setInterval(checkHealth, 60000);
+
+  // ==================== Init ====================
+  loadFeeds();
+  loadArticles();
+  loadSettings();
+
+  // ==================== Utility ====================
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escapeAttr(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+name: RSS 自动抓取
+
+on:
+  schedule:
+    # 每小时执行一次
+    - cron: '0 * * * *'
+  # 允许手动触发
+  workflow_dispatch:
+  # 推送时触发（可选，用于测试）
+  push:
+    branches:
+      - main
+
+jobs:
+  check-feeds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 触发 EdgeOne 抓取
+        run: |
+          echo "Triggering RSS fetch at $(date)"
+          response=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.EDGEONE_API_URL }}/api/check" \
+            -H "X-API-Key: ${{ secrets.EDGEONE_API_KEY }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ RSS fetch completed successfully"
+          else
+            echo "❌ RSS fetch failed with status $http_code"
+            exit 1
+          fi
+        env:
+          EDGEONE_API_URL: ${{ secrets.EDGEONE_API_URL }}
+          EDGEONE_API_KEY: ${{ secrets.EDGEONE_API_KEY }}
