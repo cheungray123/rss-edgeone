@@ -604,6 +604,9 @@
         flex-wrap: wrap;
         gap: 6px;
       }
+      .header-left {
+        gap: 8px;
+      }
       .header-right {
         gap: 4px;
       }
@@ -616,54 +619,83 @@
       }
 
       .main { flex-direction: column; }
+
       .sidebar {
-        width: 100%;
-        max-height: 45px;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        overflow: hidden;
-        transition: max-height 0.3s ease;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh;
+        max-height: none;
+        z-index: 50;
+        border-right: 1px solid var(--border);
+        border-bottom: none;
+        box-shadow: var(--shadow-lg);
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
       }
       .sidebar.open {
-        max-height: 80vh;
-        overflow-y: auto;
+        transform: translateX(0);
       }
 
       .sidebar-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 14px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        border: none;
-        width: 100%;
-        text-align: left;
+        display: flex !important;
       }
-      .sidebar-toggle::after {
-        content: '▾';
-        font-size: 12px;
-        transition: transform 0.3s;
-        color: var(--text-muted);
+
+      /* 遮罩层 */
+      .sidebar-mask {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 49;
       }
-      .sidebar.open .sidebar-toggle::after {
-        transform: rotate(180deg);
+      .sidebar.open ~ .sidebar-mask {
+        display: block;
       }
 
       .sidebar-content,
       .sidebar-locked {
-        display: none !important;
-      }
-      .sidebar.open .sidebar-content,
-      .sidebar.open .sidebar-locked {
         display: block !important;
       }
 
       .sidebar-locked {
         padding: 20px;
+      }
+
+      .sidebar-toggle {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 40;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: white;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+        padding: 0;
+        line-height: 1;
+      }
+      .sidebar-toggle:active {
+        transform: scale(0.92);
+      }
+      .sidebar-toggle svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .articles {
@@ -736,8 +768,7 @@
   <div class="main">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-      <button class="sidebar-toggle" id="sidebar-toggle">订阅源</button>
-      <!-- 未登录状态 -->
+      <div class="sidebar-inner"><!-- 未登录状态 -->
       <div class="sidebar-locked" id="sidebar-locked">
         <div class="sidebar-locked-icon">🔐</div>
         <div class="sidebar-locked-text">输入 API Key 后<br/>可管理订阅源</div>
@@ -768,6 +799,10 @@
         </div>
       </div>
     </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="sidebar-mask" id="sidebar-mask"></div>
 
     <!-- Content -->
     <div class="content">
@@ -874,7 +909,8 @@ const el = {
   sidebarContent: $('sidebar-content'),
   unlockBtn: $('unlock-btn'),
   sidebarToggle: $('sidebar-toggle'),
-  sidebar: $('sidebar')
+  sidebar: $('sidebar'),
+  sidebarMask: $('sidebar-mask')
 };
 
 // ==================== Theme ====================
@@ -1121,13 +1157,13 @@ function connectSSE() {
 connectSSE();
 
 // ==================== Mobile Sidebar Toggle ====================
+function openSidebar() { el.sidebar.classList.add('open'); }
+function closeSidebar() { el.sidebar.classList.remove('open'); }
+
 el.sidebarToggle.onclick = () => {
   el.sidebar.classList.toggle('open');
 };
-// 点击文章区域自动关闭侧边栏
-el.articles.addEventListener('click', () => {
-  if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
-});
+el.sidebarMask.onclick = closeSidebar;
 
 // ==================== Auth State ====================
 function updateAuthState() {
