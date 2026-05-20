@@ -4,8 +4,63 @@ import { getStore } from "@edgeone/pages-blob";
 
 const parser = new Parser({
   timeout: 10000,
-  headers: { 'User-Agent': 'RSS-EdgeOne/1.0' }
+  headers: { 'User-Agent': 'RSS-EdgeOne/1.0' },
+  customFetch: async (url) => {
+    for (let i = 0; i < 2; i++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`);
+        return res;
+      } catch (e) {
+        if (i >= 1) throw e;
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+  }
 });
+
+async function fetchFeed(feed) {
+  try {
+    const parsed = await parser.parseURL(feed.url);
+    return { feed, items: parsed.items || [] };
+  } catch (error) {
+    return { feed, error: error.message, items: [] };
+  }
+}
+
+// ==================== Rate Limiting ====================
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 30; // 30 requests per minute per IP
+
+function generateRequestId() {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+
+  if (!record || now - record.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
+function getClientIP(request) {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return request.headers.get('x-real-ip') || 'unknown';
+}
 
 // ==================== Blob Storage ====================
 const STORE_NAME = 'rss-data';
@@ -82,16 +137,6 @@ async function saveSettings(settings) {
 }
 
 // ==================== RSS 解析 ====================
-
-async function fetchFeed(feed) {
-  try {
-    const feedData = await parser.parseURL(feed.url);
-    return { feed, items: feedData.items || [], title: feedData.title, error: null };
-  } catch (err) {
-    console.error(`抓取失败: ${feed.url}`, err.message);
-    return { feed, items: [], title: null, error: err.message };
-  }
-}
 
 async function fetchAllFeeds() {
   const feeds = await getFeeds();
@@ -178,24 +223,56 @@ function getCorsHeaders(origin, allowedOrigins) {
   return { 'Access-Control-Allow-Origin': '*' };
 }
 
+// ==================== 认证辅助函数 ====================
+function requireAuth(context, url, corsHeaders, adminApiKey) {
+  const providedKey = context.request.headers.get('x-api-key') || url.searchParams.get('api_key');
+  if (!providedKey) {
+    return { error: new Response(JSON.stringify({ error: '缺少 API Key' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }) };
+  }
+  if (providedKey !== adminApiKey) {
+    return { error: new Response(JSON.stringify({ error: 'API Key 无效' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }) };
+  }
+  return { valid: true };
+}
+
 // ==================== 请求处理 ====================
 
 export async function onRequest(context) {
+  const requestId = generateRequestId();
   const url = new URL(context.request.url);
   const path = url.pathname;
   const method = context.request.method;
   const origin = context.request.headers.get('origin');
 
-  const ADMIN_API_KEY = context.env.API_KEY || '';
+  // 验证 API_KEY 环境变量
+  if (!context.env.API_KEY) {
+    return new Response(JSON.stringify({ error: 'API_KEY 环境变量未配置' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  const ADMIN_API_KEY = context.env.API_KEY;
   const allowedOrigins = (context.env.ALLOWED_ORIGINS || '*').split(',').map(o => o.trim());
 
   const corsHeaders = getCorsHeaders(origin, allowedOrigins);
+
+  // Rate limiting (skip for SSE and health check)
+  if (!path.startsWith('/ws') && !path.startsWith('/sse') && path !== '/api/health') {
+    const clientIP = getClientIP(context.request);
+    if (!checkRateLimit(clientIP)) {
+      return new Response(JSON.stringify({ error: '请求过于频繁，请稍后再试' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders, 'Retry-After': '60' }
+      });
+    }
+  }
 
   if (method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-API-Key'
       }
@@ -211,6 +288,8 @@ export async function onRequest(context) {
   }
 
   try {
+    const CACHE_CONTROL = 'public, max-age=60, s-maxage=60';
+
     // 首页
     if (path === '/' && method === 'GET') {
       const accept = context.request.headers.get('Accept') || '';
@@ -229,36 +308,32 @@ export async function onRequest(context) {
           'DELETE /api/feeds/:id - 删除订阅源 (需认证)',
           'GET  /api/articles    - 获取所有文章',
           'GET  /api/latest      - 获取最新文章',
-          'POST /api/check       - 触发检查 (需认证)',
+          'POST /api/check       - 触���检查 (需认证)',
           'GET  /api/settings    - 获取设置',
           'PUT  /api/settings    - 更新设置 (需认证)',
           'GET  /ws              - SSE 实时推送'
         ]
-      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
     }
 
     // 健康检查
     if (path === '/api/health' && method === 'GET') {
       const settings = await getSettings();
       return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString(), settings, storage: 'blob' }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders }
       });
     }
 
     // 获取订阅源列表
     if (path === '/api/feeds' && method === 'GET') {
       const feeds = await getFeeds();
-      return new Response(JSON.stringify(feeds), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify(feeds), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
     }
 
     // 添加订阅源
     if (path === '/api/feeds' && method === 'POST') {
-      const providedKey = context.request.headers.get('x-api-key') || new URL(context.request.url).searchParams.get('api_key');
-      if (!ADMIN_API_KEY) {
-        return new Response(JSON.stringify({ error: '服务配置错误' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      }
-      if (!providedKey) return new Response(JSON.stringify({ error: '缺少 API Key' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      if (providedKey !== ADMIN_API_KEY) return new Response(JSON.stringify({ error: 'API Key 无效' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
 
       const { url: feedUrl, title } = body;
 
@@ -286,12 +361,8 @@ export async function onRequest(context) {
 
     // 删除订阅源
     if (path.startsWith('/api/feeds/') && method === 'DELETE') {
-      const providedKey = context.request.headers.get('x-api-key') || new URL(context.request.url).searchParams.get('api_key');
-      if (!ADMIN_API_KEY) {
-        return new Response(JSON.stringify({ error: '服务配置错误' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      }
-      if (!providedKey) return new Response(JSON.stringify({ error: '缺少 API Key' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      if (providedKey !== ADMIN_API_KEY) return new Response(JSON.stringify({ error: 'API Key 无效' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
 
       const id = path.split('/').pop();
       const feeds = await getFeeds();
@@ -308,7 +379,7 @@ export async function onRequest(context) {
     // 获取文章列表
     if (path === '/api/articles' && method === 'GET') {
       const lastCheck = await getLastCheck();
-      return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
     }
 
     // 获取最新文章
@@ -316,24 +387,20 @@ export async function onRequest(context) {
       const lastCheck = await getLastCheck();
       const since = url.searchParams.get('since');
       if (!since) {
-        return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+        return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
       }
       const sinceDate = new Date(since);
       if (!isValidDate(sinceDate)) {
         return new Response(JSON.stringify({ error: '无效的 since 参数' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
       }
       const newArticles = (lastCheck?.articles || []).filter(a => new Date(a.pubDate) > sinceDate);
-      return new Response(JSON.stringify(newArticles), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify(newArticles), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
     }
 
     // 手动触发检查
     if (path === '/api/check' && method === 'POST') {
-      const providedKey = context.request.headers.get('x-api-key') || new URL(context.request.url).searchParams.get('api_key');
-      if (!ADMIN_API_KEY) {
-        return new Response(JSON.stringify({ error: '服务配置错误' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      }
-      if (!providedKey) return new Response(JSON.stringify({ error: '缺少 API Key' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      if (providedKey !== ADMIN_API_KEY) return new Response(JSON.stringify({ error: 'API Key 无效' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
 
       const result = await fetchAllFeeds();
       return new Response(JSON.stringify({ success: true, ...result }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
@@ -342,17 +409,13 @@ export async function onRequest(context) {
     // 获取设置
     if (path === '/api/settings' && method === 'GET') {
       const settings = await getSettings();
-      return new Response(JSON.stringify(settings), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify(settings), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
     }
 
     // 更新设置
     if (path === '/api/settings' && method === 'PUT') {
-      const providedKey = context.request.headers.get('x-api-key') || new URL(context.request.url).searchParams.get('api_key');
-      if (!ADMIN_API_KEY) {
-        return new Response(JSON.stringify({ error: '服务配置错误' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      }
-      if (!providedKey) return new Response(JSON.stringify({ error: '缺少 API Key' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-      if (providedKey !== ADMIN_API_KEY) return new Response(JSON.stringify({ error: 'API Key 无效' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
 
       const { timeRangeHours } = body;
       const settings = await getSettings();
@@ -431,16 +494,17 @@ export async function onRequest(context) {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
           'X-Accel-Buffering': 'no'
         }
       });
     }
 
-    return new Response(JSON.stringify({ error: '端点不存在' }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    return new Response(JSON.stringify({ error: '端点不存在', requestId }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (err) {
+    console.error(`[${requestId}] Error:`, err.message);
     const errorMsg = err.message || '服务器内部错误';
-    return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    return new Response(JSON.stringify({ error: errorMsg, requestId }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
   }
 }

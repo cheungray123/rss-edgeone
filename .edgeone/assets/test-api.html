@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS EdgeOne API 测试面板</title>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; color: #e4e4e7; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+    h1 { font-size: 32px; font-weight: 700; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .subtitle { color: #71717a; margin-bottom: 30px; font-size: 14px; }
+    .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+    .card:hover { border-color: rgba(0,217,255,0.2); transition: all 0.3s ease; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-title { font-size: 18px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .card-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .icon-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .icon-green { background: linear-gradient(135deg, #10b981, #059669); }
+    .icon-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .icon-orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .icon-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .endpoint { font-family: 'JetBrains Mono', monospace; background: rgba(0,217,255,0.1); color: #00d9ff; padding: 6px 12px; border-radius: 6px; font-size: 12px; display: inline-block; margin: 4px 8px 4px 0; border: 1px solid rgba(0,217,255,0.2); }
+    .method { font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 8px; font-size: 11px; }
+    .get { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .post { background: rgba(16,185,129,0.2); color: #34d399; }
+    .delete { background: rgba(239,68,68,0.2); color: #f87171; }
+    .put { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    button { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59,130,246,0.4); }
+    button:disabled { background: #3f3f46; cursor: not-allowed; transform: none; box-shadow: none; }
+    button.secondary { background: rgba(255,255,255,0.1); }
+    button.secondary:hover { background: rgba(255,255,255,0.15); }
+    button.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    button.danger:hover { box-shadow: 0 4px 20px rgba(239,68,68,0.4); }
+    .result { background: #0d1117; padding: 16px; border-radius: 8px; margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; max-height: 250px; overflow: auto; white-space: pre-wrap; word-break: break-all; color: #c9d1d9; border: 1px solid #30363d; }
+    .result::-webkit-scrollbar { width: 8px; height: 8px; }
+    .result::-webkit-scrollbar-track { background: #161b22; }
+    .result::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+    .error { color: #f87171; }
+    .success { color: #34d399; }
+    input, select { padding: 10px 14px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; color: #e4e4e7; font-size: 13px; margin-right: 8px; width: auto; }
+    input:focus, select:focus { outline: none; border-color: #3b82f6; }
+    label { display: block; margin: 12px 0 6px; color: #a1a1aa; font-size: 13px; }
+    .config-section { background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid rgba(59,130,246,0.2); }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .status-connected { background: rgba(16,185,129,0.2); color: #34d399; }
+    .status-disconnected { background: rgba(239,68,68,0.2); color: #f87171; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .sse-indicator { width: 8px; height: 8px; border-radius: 50%; background: #34d399; }
+    .sse-indicator.off { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>RSS EdgeOne API</h1>
+    <p class="subtitle">Cloud Functions + Blob Storage 测试面板</p>
+
+    <div class="card config-section">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-blue">⚙</span>配置</span>
+      </div>
+      <div class="config-grid">
+        <div>
+          <label>API 地址</label>
+          <input type="text" id="apiBase" value="https://rss-feed.edgeone.cool" style="width: 100%;">
+        </div>
+        <div>
+          <label>API Key</label>
+          <input type="text" id="apiKey" value="12345678" style="width: 100%;">
+        </div>
+      </div>
+      <button onclick="saveConfig()" style="margin-top: 16px;">保存配置</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-blue">ℹ</span>基础信息</span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method get">GET</span>/ - API 信息</span>
+        <span class="endpoint"><span class="method get">GET</span>/api/health - 健康检查</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="testGet('/')">测试 /</button>
+        <button onclick="testGet('/api/health')">测试 /api/health</button>
+      </div>
+      <div id="result-basic" class="result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-green">📡</span>订阅源管理</span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method get">GET</span>/api/feeds - 获取列表</span>
+        <span class="endpoint"><span class="method post">POST</span>/api/feeds - 添加</span>
+        <span class="endpoint"><span class="method delete">DELETE</span>/api/feeds/:id - 删除</span>
+      </div>
+      <div class="config-grid" style="margin-top: 16px;">
+        <div>
+          <label>RSS URL</label>
+          <input type="text" id="feedUrl" value="https://hnrss.org/frontpage" style="width: 100%;">
+        </div>
+        <div>
+          <label>标题</label>
+          <input type="text" id="feedTitle" value="Hacker News" style="width: 100%;">
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="testGet('/api/feeds')">获取列表</button>
+        <button onclick="testPostFeed()">添加订阅</button>
+        <button class="danger" onclick="testDeleteFeed()">删除选中</button>
+      </div>
+      <select id="feedList" style="margin-top: 12px; width: 100%;"></select>
+      <div id="result-feeds" class="result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-purple">📄</span>文章</span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method get">GET</span>/api/articles - 所有文章</span>
+        <span class="endpoint"><span class="method get">GET</span>/api/latest?since=xxx - 新文章</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="testGet('/api/articles')">获取所有</button>
+        <button onclick="testLatest()">获取最新</button>
+      </div>
+      <div id="result-articles" class="result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-orange">🔄</span>手动触发检查</span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method post">POST</span>/api/check - 触发抓取 (需认证)</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="testCheck()">触发检查</button>
+      </div>
+      <div id="result-check" class="result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><span class="card-icon icon-blue">⚙</span>设置</span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method get">GET</span>/api/settings - 获取设置</span>
+        <span class="endpoint"><span class="method put">PUT</span>/api/settings - 更新设置</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <label style="display: inline;">时间范围 (小时): </label>
+        <input type="number" id="timeRangeHours" value="24" min="1" max="168" style="width: 80px;">
+        <button onclick="testGet('/api/settings')">获取</button>
+        <button onclick="testUpdateSettings()">更新</button>
+      </div>
+      <div id="result-settings" class="result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">
+          <span class="card-icon icon-green">🔗</span>SSE 实时推送
+          <span id="sseStatus" class="status-badge status-disconnected"><span class="sse-indicator off"></span>未连接</span>
+        </span>
+      </div>
+      <div>
+        <span class="endpoint"><span class="method get">GET</span>/ws - SSE 实时推送</span>
+      </div>
+      <div style="margin-top: 12px;">
+        <button onclick="testSSE()" id="btnSSE">连接 SSE</button>
+        <button class="secondary" onclick="closeSSE()" id="btnSSEClose" disabled>断开</button>
+      </div>
+      <div id="result-sse" class="result"></div>
+    </div>
+  </div>
+
+  <script>
+    let apiBase = localStorage.getItem('apiBase') || 'https://rss-feed.edgeone.cool';
+    let apiKey = localStorage.getItem('apiKey') || '12345678';
+    let currentFeeds = [];
+    let eventSource = null;
+
+    document.getElementById('apiBase').value = apiBase;
+    document.getElementById('apiKey').value = apiKey;
+
+    function saveConfig() {
+      apiBase = document.getElementById('apiBase').value;
+      apiKey = document.getElementById('apiKey').value;
+      localStorage.setItem('apiBase', apiBase);
+      localStorage.setItem('apiKey', apiKey);
+      showToast('配置已保存');
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#10b981,#059669);color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;animation:fadeIn 0.3s';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    async function testGet(path) {
+      const resultEl = document.getElementById('result-' + getCategory(path));
+      resultEl.textContent = '⏳ 加载中...';
+      resultEl.className = 'result';
+      try {
+        const res = await fetch(apiBase + path);
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = 'result success';
+        if (path === '/api/feeds') {
+          currentFeeds = data;
+          updateFeedList(data);
+        }
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    async function testPostFeed() {
+      const url = document.getElementById('feedUrl').value;
+      const title = document.getElementById('feedTitle').value;
+      const resultEl = document.getElementById('result-feeds');
+      resultEl.textContent = '⏳ 添加中...';
+      resultEl.className = 'result';
+      try {
+        const res = await fetch(apiBase + '/api/feeds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+          body: JSON.stringify({ url, title })
+        });
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = res.ok ? 'result success' : 'result error';
+        if (res.ok) testGet('/api/feeds');
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    async function testDeleteFeed() {
+      const select = document.getElementById('feedList');
+      const id = select.value;
+      if (!id) return showToast('请先选择订阅源');
+      if (!confirm('确定删除?')) return;
+      const resultEl = document.getElementById('result-feeds');
+      resultEl.textContent = '⏳ 删除中...';
+      resultEl.className = 'result';
+      try {
+        const res = await fetch(apiBase + '/api/feeds/' + id, {
+          method: 'DELETE',
+          headers: { 'X-API-Key': apiKey }
+        });
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = res.ok ? 'result success' : 'result error';
+        if (res.ok) testGet('/api/feeds');
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    async function testCheck() {
+      const resultEl = document.getElementById('result-check');
+      resultEl.textContent = '⏳ 抓取中... (可能需要10-30秒)';
+      resultEl.className = 'result';
+      try {
+        const res = await fetch(apiBase + '/api/check', {
+          method: 'POST',
+          headers: { 'X-API-Key': apiKey }
+        });
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = res.ok ? 'result success' : 'result error';
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    async function testLatest() {
+      const resultEl = document.getElementById('result-articles');
+      resultEl.textContent = '⏳ 加载中...';
+      resultEl.className = 'result';
+      try {
+        const since = new Date(Date.now() - 3600000).toISOString();
+        const res = await fetch(apiBase + '/api/latest?since=' + encodeURIComponent(since));
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = 'result success';
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    async function testUpdateSettings() {
+      const hours = parseInt(document.getElementById('timeRangeHours').value);
+      const resultEl = document.getElementById('result-settings');
+      resultEl.textContent = '⏳ 更新中...';
+      resultEl.className = 'result';
+      try {
+        const res = await fetch(apiBase + '/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+          body: JSON.stringify({ timeRangeHours: hours })
+        });
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+        resultEl.className = res.ok ? 'result success' : 'result error';
+      } catch (err) {
+        resultEl.textContent = '❌ 错误: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+
+    function testSSE() {
+      const resultEl = document.getElementById('result-sse');
+      const statusEl = document.getElementById('sseStatus');
+      resultEl.textContent = '🔄 正在连接 SSE...\n';
+      resultEl.className = 'result';
+      document.getElementById('btnSSE').disabled = true;
+      document.getElementById('btnSSEClose').disabled = false;
+      statusEl.className = 'status-badge status-connected';
+      statusEl.innerHTML = '<span class="sse-indicator pulse"></span>连接中';
+
+      eventSource = new EventSource(apiBase + '/ws');
+
+      eventSource.onopen = () => {
+        resultEl.textContent += '✅ SSE 连接成功!\n';
+        statusEl.innerHTML = '<span class="sse-indicator"></span>已连接';
+        resultEl.scrollTop = resultEl.scrollHeight;
+      };
+
+      eventSource.onmessage = (e) => {
+        // 忽略心跳注释 (以冒号开头)
+        if (e.data.startsWith(':')) return;
+        resultEl.textContent += '📩 收到: ' + e.data + '\n';
+        resultEl.scrollTop = resultEl.scrollHeight;
+      };
+
+      eventSource.addEventListener('connected', (e) => {
+        const data = JSON.parse(e.data);
+        resultEl.textContent += `🔗 连接事件: clientId=${data.clientId}, 文章数=${data.articles?.length || 0}\n`;
+        resultEl.scrollTop = resultEl.scrollHeight;
+      });
+
+      eventSource.addEventListener('init', (e) => {
+        const data = JSON.parse(e.data);
+        resultEl.textContent += `📋 初始化: ${data.total} 篇文章\n`;
+        resultEl.scrollTop = resultEl.scrollHeight;
+      });
+
+      eventSource.addEventListener('new-articles', (e) => {
+        const data = JSON.parse(e.data);
+        resultEl.textContent += `🆕 新文章: ${data.count} 篇\n`;
+        resultEl.scrollTop = resultEl.scrollHeight;
+      });
+
+      let reconnecting = false;
+      eventSource.onerror = () => {
+        if (eventSource && eventSource.readyState === EventSource.CONNECTING) {
+          if (!reconnecting) {
+            reconnecting = true;
+            resultEl.textContent += '⏳ 正在重连...\n';
+            statusEl.innerHTML = '<span class="sse-indicator pulse"></span>重连中';
+          }
+          return;
+        }
+        if (!reconnecting) {
+          resultEl.textContent += '⚠️ 连接断开 (云函数超时后自动断开)\n';
+          resultEl.textContent += '💡 点击"连接 SSE"重新连接\n';
+        }
+        document.getElementById('btnSSE').disabled = false;
+        document.getElementById('btnSSEClose').disabled = true;
+        statusEl.className = 'status-badge status-disconnected';
+        statusEl.innerHTML = '<span class="sse-indicator off"></span>已断开';
+        reconnecting = false;
+      };
+    }
+
+    function closeSSE() {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      document.getElementById('btnSSE').disabled = false;
+      document.getElementById('btnSSEClose').disabled = true;
+      document.getElementById('sseStatus').className = 'status-badge status-disconnected';
+      document.getElementById('sseStatus').innerHTML = '<span class="sse-indicator off"></span>未连接';
+      document.getElementById('result-sse').textContent += '👋 已断开连接\n';
+    }
+
+    function updateFeedList(feeds) {
+      const select = document.getElementById('feedList');
+      if (!feeds.length) {
+        select.innerHTML = '<option>暂无订阅源</option>';
+        return;
+      }
+      select.innerHTML = feeds.map(f => `<option value="${f.id}">${f.title || f.url}</option>`).join('');
+    }
+
+    function getCategory(path) {
+      if (path === '/' || path === '/api/health') return 'basic';
+      if (path.includes('feed')) return 'feeds';
+      if (path.includes('article')) return 'articles';
+      if (path === '/api/check') return 'check';
+      return 'settings';
+    }
+  </script>
+</body>
+</html>

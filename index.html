@@ -5,818 +5,814 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RSS EdgeOne</title>
   <style>
+    /* ==================== Theme ==================== */
     :root {
-      --bg-primary: #0f1117;
-      --bg-secondary: #1a1d27;
-      --bg-card: #21242f;
-      --bg-input: #2a2d3a;
-      --text-primary: #e4e6ed;
-      --text-secondary: #8b8fa3;
-      --text-muted: #5c6078;
-      --accent: #6366f1;
-      --accent-hover: #818cf8;
-      --accent-active: #4f46e5;
-      --danger: #ef4444;
-      --danger-hover: #f87171;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-tertiary: #f1f3f5;
+      --bg-elevated: #ffffff;
+      --bg-hover: #e9ecef;
+
+      --text-primary: #212529;
+      --text-secondary: #6c757d;
+      --text-muted: #adb5bd;
+
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --accent-muted: rgba(217, 119, 6, 0.1);
+
+      --border: #dee2e6;
+      --border-subtle: #f1f3f5;
+
       --success: #22c55e;
-      --border: #2e3144;
-      --shadow: 0 2px 8px rgba(0,0,0,0.3);
-      --radius: 10px;
-      --radius-sm: 6px;
-      --transition: 0.2s ease;
+      --danger: #ef4444;
+
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0d0d0d;
+      --bg-secondary: #161616;
+      --bg-tertiary: #1f1f1f;
+      --bg-elevated: #1a1a1a;
+      --bg-hover: #2a2a2a;
+
+      --text-primary: #e9ecef;
+      --text-secondary: #adb5bd;
+      --text-muted: #495057;
+
+      --border: #2a2a2a;
+      --border-subtle: #1f1f1f;
+
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
-      line-height: 1.6;
+      font-size: 14px;
+      line-height: 1.5;
       min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ==================== Layout ==================== */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
     /* Header */
     .header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 16px 24px;
+      justify-content: space-between;
+      padding: 10px 16px;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
+      flex-shrink: 0;
     }
-    .header-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .header-title span { color: var(--accent); }
-    .api-key-group {
+
+    .header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-left: auto;
+      gap: 12px;
     }
-    .api-key-group input {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-primary);
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
-      width: 220px;
-      outline: none;
-      transition: border var(--transition);
+
+    .logo {
+      font-weight: 600;
+      font-size: 15px;
     }
-    .api-key-group input:focus { border-color: var(--accent); }
+
+    .logo span { color: var(--accent); }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
     .status-dot {
-      width: 10px; height: 10px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: var(--text-muted);
-      flex-shrink: 0;
-      transition: background var(--transition);
     }
-    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
-    .status-label { font-size: 0.78rem; color: var(--text-secondary); }
 
-    /* Layout */
-    .main-layout {
+    .status-dot.on { background: var(--success); }
+
+    .header-right {
       display: flex;
-      min-height: calc(100vh - 64px);
+      align-items: center;
+      gap: 6px;
     }
-    .sidebar {
-      width: 340px;
-      min-width: 340px;
-      border-right: 1px solid var(--border);
-      background: var(--bg-secondary);
-      padding: 20px;
-      overflow-y: auto;
-      max-height: calc(100vh - 64px);
-    }
-    .content {
-      flex: 1;
-      padding: 20px 24px;
-      overflow-y: auto;
-      max-height: calc(100vh - 64px);
-    }
-
-    /* Section titles */
-    .section-title {
-      font-size: 0.82rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-secondary);
-      margin-bottom: 12px;
-    }
-
-    /* Add feed form */
-    .add-feed-form {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-    .add-feed-form input {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-primary);
-      padding: 9px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
-      outline: none;
-      transition: border var(--transition);
-    }
-    .add-feed-form input:focus { border-color: var(--accent); }
 
     /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 9px 16px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
+      gap: 4px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: background var(--transition), transform 0.1s;
-      white-space: nowrap;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      transition: all 0.15s;
     }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-outline {
-      background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid var(--border);
-    }
-    .btn-outline:hover { background: var(--bg-input); color: var(--text-primary); }
-    .btn-danger { background: transparent; color: var(--danger); border: 1px solid transparent; padding: 4px 10px; font-size: 0.78rem; }
-    .btn-danger:hover { background: rgba(239,68,68,0.12); }
-    .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
 
-    /* Feed cards */
-    .feed-card {
-      background: var(--bg-card);
+    .btn:hover { background: var(--bg-hover); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+    /* Main */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-section {
+      padding: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 8px;
+    }
+
+    .feed-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .feed-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+
+    .feed-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .feed-item.active { background: var(--accent-muted); color: var(--accent); }
+
+    .feed-item-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .feed-item-delete {
+      opacity: 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 4px;
+    }
+
+    .feed-item:hover .feed-item-delete { opacity: 0.6; }
+    .feed-item-delete:hover { opacity: 1; color: var(--danger); }
+
+    /* Feed Form */
+    .feed-form {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+    }
+
+    .feed-form.visible { display: flex; }
+
+    /* Locked State */
+    .sidebar-locked {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .sidebar-locked-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+
+    .sidebar-locked-text {
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-locked .btn {
+      width: 100%;
+    }
+
+    .input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg-primary);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .input:focus { border-color: var(--accent); }
+
+    /* Content */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .content-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .content-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .content-count {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .articles {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    /* Article Cards */
+    .article {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
       padding: 14px;
       margin-bottom: 10px;
-      cursor: pointer;
-      transition: border-color var(--transition), background var(--transition);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .feed-card:hover { border-color: var(--accent); }
-    .feed-card.active { border-color: var(--accent); background: rgba(99,102,241,0.08); }
-    .feed-card-title {
-      font-size: 0.92rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    .feed-card-url {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      word-break: break-all;
-      margin-bottom: 4px;
-    }
-    .feed-card-time { font-size: 0.72rem; color: var(--text-muted); }
 
-    /* Article cards */
-    .article-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-      margin-bottom: 12px;
-      transition: border-color var(--transition);
+    .article:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow);
     }
-    .article-card:hover { border-color: var(--accent); }
+
+    .article-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
     .article-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.4;
     }
+
     .article-title a {
       color: var(--text-primary);
       text-decoration: none;
     }
+
     .article-title a:hover { color: var(--accent); }
+
+    .article-source {
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
     .article-meta {
       display: flex;
-      gap: 14px;
-      font-size: 0.78rem;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
     }
+
     .article-summary {
-      font-size: 0.88rem;
+      font-size: 13px;
       color: var(--text-secondary);
-      line-height: 1.55;
+      line-height: 1.5;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
+      -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      margin-top: 8px;
     }
 
-    /* Toolbar */
-    .toolbar {
+    /* Empty */
+    .empty {
       display: flex;
-      gap: 10px;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
+      flex-direction: column;
       align-items: center;
-    }
-    .toolbar .spacer { flex: 1; }
-
-    /* Settings panel */
-    .settings-panel {
-      margin-top: 16px;
-      border-top: 1px solid var(--border);
-      padding-top: 16px;
-    }
-    .settings-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      user-select: none;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      padding: 6px 0;
-    }
-    .settings-toggle:hover { color: var(--text-primary); }
-    .settings-toggle .arrow {
-      transition: transform var(--transition);
-      font-size: 0.7rem;
-    }
-    .settings-toggle.open .arrow { transform: rotate(180deg); }
-    .settings-body { display: none; margin-top: 12px; }
-    .settings-body.open { display: block; }
-    .slider-group { margin-bottom: 14px; }
-    .slider-group label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-    }
-    input[type="range"] {
-      width: 100%;
-      -webkit-appearance: none;
-      height: 4px;
-      background: var(--bg-input);
-      border-radius: 2px;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 16px; height: 16px;
-      background: var(--accent);
-      border-radius: 50%;
-      cursor: pointer;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      text-align: center;
     }
 
-    /* Skeleton loading */
+    .empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.6; }
+    .empty-text { font-size: 13px; }
+
+    /* Skeleton */
     .skeleton {
-      background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-input) 50%, var(--bg-card) 75%);
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
       background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: var(--radius-sm);
-      height: 16px;
-      margin-bottom: 8px;
+      animation: shimmer 1.2s infinite;
+      border-radius: 4px;
     }
-    .skeleton.w60 { width: 60%; }
-    .skeleton.w80 { width: 80%; }
-    .skeleton.w40 { width: 40%; }
-    .skeleton.h24 { height: 24px; }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    .skeleton-article { height: 80px; margin-bottom: 10px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      width: 90%;
+      max-width: 380px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .modal-title { font-size: 15px; font-weight: 600; }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .modal-body { display: flex; flex-direction: column; gap: 14px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 12px; color: var(--text-secondary); }
+
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type="range"] { flex: 1; }
+    .slider-value { font-size: 12px; color: var(--accent); min-width: 50px; text-align: right; }
 
     /* Toast */
     .toast-container {
       position: fixed;
-      top: 16px;
+      bottom: 16px;
       right: 16px;
-      z-index: 9999;
+      z-index: 200;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      pointer-events: none;
+      gap: 6px;
     }
+
     .toast {
-      background: var(--bg-card);
+      padding: 10px 14px;
+      background: var(--bg-elevated);
       border: 1px solid var(--border);
-      color: var(--text-primary);
-      padding: 12px 18px;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
-      box-shadow: var(--shadow);
-      animation: toast-in 0.3s ease;
-      pointer-events: auto;
-      max-width: 360px;
+      border-radius: 6px;
+      font-size: 12px;
+      animation: toastIn 0.2s ease;
     }
+
     .toast.error { border-left: 3px solid var(--danger); }
     .toast.success { border-left: 3px solid var(--success); }
-    .toast.info { border-left: 3px solid var(--accent); }
-    @keyframes toast-in {
-      from { opacity: 0; transform: translateX(40px); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(20px); }
       to { opacity: 1; transform: translateX(0); }
     }
 
-    /* Health bar */
-    .health-bar {
-      padding: 14px 24px;
-      background: var(--bg-secondary);
-      border-top: 1px solid var(--border);
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .health-bar .dot {
-      display: inline-block;
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      margin-right: 4px;
-      vertical-align: middle;
-    }
-    .health-bar .dot.ok { background: var(--success); }
-    .health-bar .dot.err { background: var(--danger); }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-      .main-layout { flex-direction: column; }
-      .sidebar {
-        width: 100%;
-        min-width: 0;
-        max-height: none;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-      }
-      .content { max-height: none; }
-      .header { padding: 12px 16px; }
-      .api-key-group input { width: 160px; }
-      .sidebar, .content { padding: 16px; }
+    /* Responsive */
+    @media (max-width: 640px) {
+      .sidebar { width: 180px; }
+      .main { flex-direction: column; }
+      .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border); }
     }
   </style>
 </head>
 <body>
 
+<div class="app">
   <!-- Header -->
   <header class="header">
-    <div class="header-title"><span>RSS</span> EdgeOne</div>
-    <div class="api-key-group">
-      <span class="status-dot" id="sse-dot"></span>
-      <span class="status-label" id="sse-label">未连接</span>
-      <input type="password" id="api-key-input" placeholder="输入 API Key…" autocomplete="off" />
+    <div class="header-left">
+      <div class="logo"><span>RSS</span> EdgeOne</div>
+      <div class="status">
+        <span class="status-dot" id="sse-dot"></span>
+        <span id="sse-status">未连接</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost btn-sm" id="theme-btn" title="切换主题">◐</button>
+      <button class="btn btn-sm" id="refresh-btn">↻</button>
+      <button class="btn btn-primary btn-sm" id="fetch-btn">抓取</button>
     </div>
   </header>
 
-  <!-- Main layout -->
-  <div class="main-layout">
-    <!-- Sidebar: feeds -->
+  <!-- Main -->
+  <div class="main">
+    <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="section-title">添加订阅源</div>
-      <div class="add-feed-form">
-        <input type="url" id="feed-url-input" placeholder="RSS 源 URL" />
-        <input type="text" id="feed-title-input" placeholder="标题（可选）" />
-        <button class="btn btn-primary" id="add-feed-btn">添加</button>
+      <!-- 未登录状态 -->
+      <div class="sidebar-locked" id="sidebar-locked">
+        <div class="sidebar-locked-icon">🔐</div>
+        <div class="sidebar-locked-text">输入 API Key 后<br/>可管理订阅源</div>
+        <button class="btn btn-primary btn-sm" id="unlock-btn">输入 API Key</button>
       </div>
 
-      <div class="section-title">订阅源</div>
-      <div id="feeds-list">
-        <div class="skeleton w80"></div>
-        <div class="skeleton w60"></div>
-      </div>
-
-      <!-- Settings -->
-      <div class="settings-panel">
-        <div class="settings-toggle" id="settings-toggle">
-          <span>⚙ 设置</span>
-          <span class="arrow">▼</span>
-        </div>
-        <div class="settings-body" id="settings-body">
-          <div class="slider-group">
-            <label>
-              <span>时间范围</span>
-              <span id="time-range-value">24 小时</span>
-            </label>
-            <input type="range" id="time-range-slider" min="1" max="168" value="24" />
+      <!-- 已登录状态 -->
+      <div class="sidebar-content" id="sidebar-content" style="display:none;">
+        <div class="sidebar-section">
+          <div class="sidebar-title">添加订阅</div>
+          <div class="feed-form">
+            <input type="url" class="input" id="feed-url" placeholder="RSS 地址" />
+            <input type="text" class="input" id="feed-title" placeholder="标题（可选）" />
+            <button class="btn btn-primary btn-sm" id="add-feed-btn" style="width:100%">添加</button>
           </div>
-          <button class="btn btn-primary btn-sm" id="save-settings-btn">保存设置</button>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">订阅源</div>
+        </div>
+        <div class="feed-list" id="feed-list"></div>
+
+        <div class="sidebar-section" style="margin-top: auto;">
+          <button class="btn btn-sm" id="settings-btn" style="width: 100%;">⚙ 设置</button>
         </div>
       </div>
     </aside>
 
-    <!-- Content: articles -->
-    <main class="content">
-      <div class="toolbar">
-        <button class="btn btn-outline btn-sm" id="refresh-articles-btn">刷新文章</button>
-        <button class="btn btn-outline btn-sm" id="fetch-latest-btn">获取最新</button>
-        <button class="btn btn-primary btn-sm" id="trigger-check-btn">触发抓取</button>
-        <div class="spacer"></div>
-        <button class="btn btn-outline btn-sm" id="clear-filter-btn" style="display:none;">✕ 清除筛选</button>
+    <!-- Content -->
+    <div class="content">
+      <div class="content-header">
+        <div class="content-title" id="content-title">全部文章</div>
+        <span class="content-count" id="content-count"></span>
       </div>
-      <div class="section-title" id="articles-heading">全部文章</div>
-      <div id="articles-list">
-        <div class="skeleton w80 h24"></div>
-        <div class="skeleton w60"></div>
-        <div class="skeleton w40"></div>
-        <div style="height:12px"></div>
-        <div class="skeleton w80 h24"></div>
-        <div class="skeleton w60"></div>
-      </div>
-    </main>
+      <div class="articles" id="articles"></div>
+    </div>
   </div>
+</div>
 
-  <!-- Health bar -->
-  <footer class="health-bar" id="health-bar">正在检查服务状态…</footer>
+<!-- Settings Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">设置</div>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">API Key</div>
+        <input type="password" class="input" id="api-key" placeholder="输入 API Key" />
+      </div>
+      <div class="form-group">
+        <div class="form-label">时间范围</div>
+        <div class="slider-row">
+          <input type="range" id="range-slider" min="1" max="168" value="24" />
+          <span class="slider-value" id="range-value">24h</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="cancel-btn">取消</button>
+      <button class="btn btn-primary" id="save-btn">保存</button>
+    </div>
+  </div>
+</div>
 
-  <!-- Toast container -->
-  <div class="toast-container" id="toast-container"></div>
+<!-- Toast -->
+<div class="toast-container" id="toast"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  // ==================== DOM References ====================
-  var apiKeyInput = document.getElementById('api-key-input');
-  var sseDot = document.getElementById('sse-dot');
-  var sseLabel = document.getElementById('sse-label');
-  var feedUrlInput = document.getElementById('feed-url-input');
-  var feedTitleInput = document.getElementById('feed-title-input');
-  var addFeedBtn = document.getElementById('add-feed-btn');
-  var feedsList = document.getElementById('feeds-list');
-  var articlesList = document.getElementById('articles-list');
-  var articlesHeading = document.getElementById('articles-heading');
-  var refreshArticlesBtn = document.getElementById('refresh-articles-btn');
-  var fetchLatestBtn = document.getElementById('fetch-latest-btn');
-  var triggerCheckBtn = document.getElementById('trigger-check-btn');
-  var clearFilterBtn = document.getElementById('clear-filter-btn');
-  var settingsToggle = document.getElementById('settings-toggle');
-  var settingsBody = document.getElementById('settings-body');
-  var timeRangeSlider = document.getElementById('time-range-slider');
-  var timeRangeValue = document.getElementById('time-range-value');
-  var saveSettingsBtn = document.getElementById('save-settings-btn');
-  var healthBar = document.getElementById('health-bar');
-  var toastContainer = document.getElementById('toast-container');
+// ==================== State ====================
+const state = {
+  feeds: [],
+  articles: [],
+  activeFeedId: null,
+  es: null
+};
 
-  // ==================== State ====================
-  var feeds = [];
-  var articles = [];
-  var activeFeedId = null;
-  var eventSource = null;
-  var sseRetries = 0;
-  var sseRetryTimer = null;
+// ==================== Elements ====================
+const $ = id => document.getElementById(id);
+const el = {
+  themeBtn: $('theme-btn'),
+  sseDot: $('sse-dot'),
+  sseStatus: $('sse-status'),
+  refreshBtn: $('refresh-btn'),
+  fetchBtn: $('fetch-btn'),
+  feedUrl: $('feed-url'),
+  feedTitle: $('feed-title'),
+  addFeedBtn: $('add-feed-btn'),
+  feedList: $('feed-list'),
+  contentTitle: $('content-title'),
+  contentCount: $('content-count'),
+  articles: $('articles'),
+  settingsBtn: $('settings-btn'),
+  modal: $('modal'),
+  modalClose: $('modal-close'),
+  cancelBtn: $('cancel-btn'),
+  saveBtn: $('save-btn'),
+  apiKey: $('api-key'),
+  rangeSlider: $('range-slider'),
+  rangeValue: $('range-value'),
+  toast: $('toast'),
+  sidebarLocked: $('sidebar-locked'),
+  sidebarContent: $('sidebar-content'),
+  unlockBtn: $('unlock-btn')
+};
 
-  // ==================== Helpers ====================
-  function getApiKey() {
-    return localStorage.getItem('rss_api_key') || '';
-  }
+// ==================== Theme ====================
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  localStorage.setItem('rss_theme', dark ? 'dark' : 'light');
+}
 
-  function authHeaders() {
-    var key = getApiKey();
-    var h = { 'Content-Type': 'application/json' };
-    if (key) h['X-API-Key'] = key;
-    return h;
-  }
+function initTheme() {
+  const saved = localStorage.getItem('rss_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  setTheme(saved ? saved === 'dark' : prefersDark);
+}
 
-  function showToast(msg, type) {
-    type = type || 'info';
-    var el = document.createElement('div');
-    el.className = 'toast ' + type;
-    el.textContent = msg;
-    toastContainer.appendChild(el);
-    setTimeout(function () {
-      el.style.opacity = '0';
-      el.style.transition = 'opacity 0.3s';
-      setTimeout(function () { el.remove(); }, 300);
-    }, 3000);
-  }
+el.themeBtn.onclick = () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(!isDark);
+};
 
-  function formatDate(iso) {
-    try {
-      var d = new Date(iso);
-      return d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch (e) { return iso; }
-  }
+initTheme();
 
-  function debounce(fn, delay) {
-    var timer = null;
-    return function () {
-      var self = this, args = arguments;
-      clearTimeout(timer);
-      timer = setTimeout(function () { fn.apply(self, args); }, delay);
-    };
-  }
+// ==================== Utils ====================
+function getKey() { return localStorage.getItem('rss_api_key') || ''; }
+function auth(h = {}) { const k = getKey(); if (k) h['X-API-Key'] = k; h['Content-Type'] = 'application/json'; return h; }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function fmt(s) { try { return new Date(s).toLocaleString('zh-CN', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return s; } }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return esc(s).replace(/'/g,'&#39;'); }
+function toast(msg, type = '') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  el.toast.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
 
-  async function apiFetch(url, options) {
-    options = options || {};
-    var headers = Object.assign({}, authHeaders(), options.headers || {});
-    try {
-      var res = await fetch(url, { method: options.method || 'GET', headers: headers, body: options.body });
-      if (res.status === 401 || res.status === 403) {
-        showToast('认证失败，请检查 API Key', 'error');
-        apiKeyInput.focus();
-        return null;
-      }
-      return res;
-    } catch (e) {
-      showToast('网络错误：' + e.message, 'error');
-      return null;
-    }
-  }
+async function api(url, opts = {}) {
+  try {
+    const r = await fetch(url, { headers: auth(opts.headers), method: opts.method||'GET', body: opts.body });
+    if (r.status === 401 || r.status === 403) { toast('认证失败', 'error'); return null; }
+    if (!r.ok) { const d = await r.json().catch(()=>({})); toast(d.error||'请求失败', 'error'); return null; }
+    return r;
+  } catch (e) { toast('网络错误', 'error'); return null; }
+}
 
-  // ==================== API Key ====================
-  apiKeyInput.value = getApiKey();
-  var saveApiKeyDebounced = debounce(function () {
-    localStorage.setItem('rss_api_key', apiKeyInput.value.trim());
-  }, 400);
-  apiKeyInput.addEventListener('input', saveApiKeyDebounced);
+// ==================== Feeds ====================
+async function loadFeeds() {
+  const res = await api('/api/feeds');
+  state.feeds = res ? await res.json() : [];
+  renderFeeds();
+}
 
-  // ==================== Feeds ====================
-  async function loadFeeds() {
-    feedsList.innerHTML = '<div class="skeleton w80"></div><div class="skeleton w60"></div>';
-    var res = await apiFetch('/api/feeds');
-    if (!res) { feedsList.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
-    feeds = await res.json();
-    renderFeeds();
-  }
+function renderFeeds() {
+  el.feedList.innerHTML = '';
 
-  function renderFeeds() {
-    if (feeds.length === 0) {
-      feedsList.innerHTML = '<div class="empty-state">暂无订阅源</div>';
-      return;
-    }
-    feedsList.innerHTML = '';
-    feeds.forEach(function (feed) {
-      var card = document.createElement('div');
-      card.className = 'feed-card' + (activeFeedId === feed.id ? ' active' : '');
-      card.innerHTML =
-        '<div class="feed-card-title">' +
-          '<span>' + escapeHtml(feed.title || feed.url) + '</span>' +
-          '<button class="btn btn-danger" data-delete-feed="' + feed.id + '">删除</button>' +
-        '</div>' +
-        '<div class="feed-card-url">' + escapeHtml(feed.url) + '</div>' +
-        '<div class="feed-card-time">' + formatDate(feed.createdAt) + '</div>';
-      card.addEventListener('click', function (e) {
-        if (e.target.closest('[data-delete-feed]')) return;
-        if (activeFeedId === feed.id) {
-          activeFeedId = null;
-          clearFilterBtn.style.display = 'none';
-          articlesHeading.textContent = '全部文章';
-        } else {
-          activeFeedId = feed.id;
-          clearFilterBtn.style.display = '';
-          articlesHeading.textContent = '筛选：' + (feed.title || feed.url);
-        }
-        renderFeeds();
-        renderArticles();
-      });
-      feedsList.appendChild(card);
-    });
+  // All
+  const all = document.createElement('div');
+  all.className = `feed-item${!state.activeFeedId ? ' active' : ''}`;
+  all.innerHTML = '<span class="feed-item-title">📄 全部</span>';
+  all.onclick = () => { state.activeFeedId = null; el.contentTitle.textContent = '全部文章'; renderFeeds(); renderArticles(); };
+  el.feedList.appendChild(all);
 
-    // Delete buttons
-    feedsList.querySelectorAll('[data-delete-feed]').forEach(function (btn) {
-      btn.addEventListener('click', async function (e) {
-        e.stopPropagation();
-        var id = btn.getAttribute('data-delete-feed');
-        var res = await apiFetch('/api/feeds/' + id, { method: 'DELETE' });
-        if (!res) return;
-        if (res.ok) {
-          showToast('订阅源已删除', 'success');
-          if (activeFeedId === id) {
-            activeFeedId = null;
-            clearFilterBtn.style.display = 'none';
-            articlesHeading.textContent = '全部文章';
-          }
-          loadFeeds();
-        } else {
-          var data = await res.json();
-          showToast(data.error || '删除失败', 'error');
-        }
-      });
-    });
-  }
-
-  addFeedBtn.addEventListener('click', async function () {
-    var url = feedUrlInput.value.trim();
-    var title = feedTitleInput.value.trim();
-    if (!url) { showToast('请输入 RSS 源 URL', 'error'); feedUrlInput.focus(); return; }
-    addFeedBtn.disabled = true;
-    addFeedBtn.textContent = '添加中…';
-    var res = await apiFetch('/api/feeds', {
-      method: 'POST',
-      body: JSON.stringify({ url: url, title: title })
-    });
-    addFeedBtn.disabled = false;
-    addFeedBtn.textContent = '添加';
-    if (!res) return;
-    if (res.ok) {
-      showToast('订阅源已添加', 'success');
-      feedUrlInput.value = '';
-      feedTitleInput.value = '';
-      loadFeeds();
-    } else {
-      var data = await res.json();
-      showToast(data.error || '添加失败', 'error');
-    }
-  });
-
-  // ==================== Articles ====================
-  async function loadArticles() {
-    articlesList.innerHTML = '<div class="skeleton w80 h24"></div><div class="skeleton w60"></div><div class="skeleton w40"></div><div style="height:12px"></div><div class="skeleton w80 h24"></div><div class="skeleton w60"></div>';
-    var res = await apiFetch('/api/articles');
-    if (!res) { articlesList.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
-    articles = await res.json();
-    renderArticles();
-  }
-
-  function renderArticles() {
-    var filtered = articles;
-    if (activeFeedId) {
-      var feed = feeds.find(function (f) { return f.id === activeFeedId; });
-      if (feed) {
-        filtered = articles.filter(function (a) {
-          return a.feedTitle === feed.title || a.feedTitle === feed.url || a.feedUrl === feed.url;
-        });
-      }
-    }
-    if (filtered.length === 0) {
-      articlesList.innerHTML = '<div class="empty-state">暂无文章</div>';
-      return;
-    }
-    articlesList.innerHTML = '';
-    filtered.forEach(function (article) {
-      var card = document.createElement('div');
-      card.className = 'article-card';
-      card.innerHTML =
-        '<div class="article-title"><a href="' + escapeAttr(article.link) + '" target="_blank" rel="noopener">' + escapeHtml(article.title) + '</a></div>' +
-        '<div class="article-meta">' +
-          '<span>来源：' + escapeHtml(article.feedTitle || '未知') + '</span>' +
-          (article.author ? '<span>作者：' + escapeHtml(article.author) + '</span>' : '') +
-          '<span>' + formatDate(article.pubDate) + '</span>' +
-        '</div>' +
-        (article.summary || article.contentSnippet ? '<div class="article-summary">' + escapeHtml(article.summary || article.contentSnippet || '') + '</div>' : '');
-      articlesList.appendChild(card);
-    });
-  }
-
-  refreshArticlesBtn.addEventListener('click', function () { loadArticles(); });
-  fetchLatestBtn.addEventListener('click', async function () {
-    var res = await apiFetch('/api/latest');
-    if (!res) return;
-    if (res.ok) {
-      articles = await res.json();
+  // Feeds
+  state.feeds.forEach(f => {
+    const item = document.createElement('div');
+    item.className = `feed-item${state.activeFeedId === f.id ? ' active' : ''}`;
+    item.innerHTML = `<span class="feed-item-title">${esc(f.title||f.url)}</span><button class="feed-item-delete" data-id="${f.id}">×</button>`;
+    item.onclick = (e) => {
+      if (e.target.classList.contains('feed-item-delete')) return;
+      state.activeFeedId = f.id;
+      el.contentTitle.textContent = esc(f.title||f.url);
+      renderFeeds();
       renderArticles();
-      showToast('已获取最新文章', 'success');
-    }
-  });
-  triggerCheckBtn.addEventListener('click', async function () {
-    triggerCheckBtn.disabled = true;
-    triggerCheckBtn.textContent = '抓取中…';
-    var res = await apiFetch('/api/check', { method: 'POST' });
-    triggerCheckBtn.disabled = false;
-    triggerCheckBtn.textContent = '触发抓取';
-    if (!res) return;
-    if (res.ok) {
-      showToast('抓取已触发', 'success');
-      loadArticles();
-    } else {
-      var data = await res.json();
-      showToast(data.error || '抓取失败', 'error');
-    }
-  });
-  clearFilterBtn.addEventListener('click', function () {
-    activeFeedId = null;
-    clearFilterBtn.style.display = 'none';
-    articlesHeading.textContent = '全部文章';
-    renderFeeds();
-    renderArticles();
+    };
+    item.querySelector('.feed-item-delete').onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm('删除？')) return;
+      const r = await api(`/api/feeds/${f.id}`, {method:'DELETE'});
+      if (r?.ok) toast('已删除'), loadFeeds();
+    };
+    el.feedList.appendChild(item);
   });
 
-  // ==================== Settings ====================
-  settingsToggle.addEventListener('click', function () {
-    settingsToggle.classList.toggle('open');
-    settingsBody.classList.toggle('open');
-  });
-  timeRangeSlider.addEventListener('input', function () {
-    timeRangeValue.textContent = timeRangeSlider.value + ' 小时';
-  });
-  saveSettingsBtn.addEventListener('click', async function () {
-    var val = Number(timeRangeSlider.value);
-    saveSettingsBtn.disabled = true;
-    var res = await apiFetch('/api/settings', {
-      method: 'PUT',
-      body: JSON.stringify({ timeRangeHours: val })
-    });
-    saveSettingsBtn.disabled = false;
-    if (!res) return;
-    if (res.ok) {
-      showToast('设置已保存', 'success');
-    } else {
-      var data = await res.json();
-      showToast(data.error || '保存失败', 'error');
-    }
-  });
-  async function loadSettings() {
-    var res = await apiFetch('/api/settings');
-    if (!res) return;
-    if (res.ok) {
-      var s = await res.json();
-      timeRangeSlider.value = s.timeRangeHours || 24;
-      timeRangeValue.textContent = (s.timeRangeHours || 24) + ' 小时';
-    }
+  if (!state.feeds.length) {
+    el.feedList.innerHTML = '<div class="empty" style="padding:20px;"><div class="empty-text">暂无订阅</div></div>';
+  }
+}
+
+el.addFeedBtn.onclick = async () => {
+  const url = el.feedUrl.value.trim();
+  const title = el.feedTitle.value.trim();
+  if (!url) return toast('请输入地址', 'error');
+  const res = await api('/api/feeds', {method:'POST', body:JSON.stringify({url,title})});
+  if (res?.ok) {
+    toast('已添加', 'success');
+    el.feedUrl.value = '';
+    el.feedTitle.value = '';
+    loadFeeds();
+  }
+};
+
+// ==================== Articles ====================
+async function loadArticles() {
+  el.articles.innerHTML = '<div class="skeleton skeleton-article"></div>'.repeat(3);
+  const res = await api('/api/articles');
+  state.articles = res ? await res.json() : [];
+  renderArticles();
+}
+
+function renderArticles() {
+  let list = state.articles;
+  if (state.activeFeedId) {
+    const f = state.feeds.find(f => f.id === state.activeFeedId);
+    if (f) list = list.filter(a => a.feedTitle === f.title || a.feedTitle === f.url || a.feedUrl === f.url);
   }
 
-  // ==================== SSE ====================
-  function connectSSE() {
-    if (eventSource) { eventSource.close(); }
-    try {
-      eventSource = new EventSource('/ws');
-      eventSource.addEventListener('open', function () {
-        sseDot.className = 'status-dot connected';
-        sseLabel.textContent = '已连接';
-        sseRetries = 0;
-      });
-      eventSource.addEventListener('message', function (e) {
-        try {
-          var data = JSON.parse(e.data);
-          if (data.type === 'new-articles' || data.type === 'articles') {
-            loadArticles();
-          }
-        } catch (err) { /* ignore parse errors */ }
-      });
-      eventSource.addEventListener('error', function () {
-        sseDot.className = 'status-dot';
-        sseLabel.textContent = '未连接';
-        eventSource.close();
-        eventSource = null;
-        scheduleReconnect();
-      });
-    } catch (e) {
-      scheduleReconnect();
-    }
+  el.contentCount.textContent = `${list.length} 篇`;
+
+  if (!list.length) {
+    el.articles.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无文章</div></div>';
+    return;
   }
 
-  function scheduleReconnect() {
-    if (sseRetryTimer) clearTimeout(sseRetryTimer);
-    // Exponential backoff, max 5 minutes (300s)
-    var delay = Math.min(Math.pow(2, sseRetries) * 1000, 300000);
-    sseRetries++;
-    sseRetryTimer = setTimeout(function () { connectSSE(); }, delay);
+  el.articles.innerHTML = list.map(a => `
+    <div class="article">
+      <div class="article-source">${esc(a.feedTitle||'未知')}</div>
+      <div class="article-header">
+        <div class="article-title"><a href="${escAttr(a.link)}" target="_blank">${esc(a.title)}</a></div>
+      </div>
+      <div class="article-meta">${a.author?`<span>${esc(a.author)}</span>`:''}<span>${fmt(a.pubDate)}</span></div>
+      ${a.summary||a.contentSnippet?`<div class="article-summary">${esc(a.summary||a.contentSnippet)}</div>`:''}
+    </div>
+  `).join('');
+}
+
+el.refreshBtn.onclick = loadArticles;
+el.fetchBtn.onclick = async () => {
+  el.fetchBtn.disabled = true;
+  const res = await api('/api/check', {method:'POST'});
+  el.fetchBtn.disabled = false;
+  if (res?.ok) toast('抓取完成', 'success'), loadArticles();
+};
+
+// ==================== Modal ====================
+function openModal() {
+  el.apiKey.value = getKey();
+  el.modal.classList.add('open');
+}
+function closeModal() { el.modal.classList.remove('open'); }
+
+el.settingsBtn.onclick = () => { el.apiKey.value = getKey(); openModal(); };
+el.modalClose.onclick = closeModal;
+el.cancelBtn.onclick = closeModal;
+el.modal.onclick = e => { if (e.target === el.modal) closeModal(); };
+el.rangeSlider.oninput = () => { el.rangeValue.textContent = el.rangeSlider.value + 'h'; };
+
+async function loadSettings() {
+  const res = await api('/api/settings');
+  if (res) {
+    const s = await res.json();
+    el.rangeSlider.value = s.timeRangeHours || 24;
+    el.rangeValue.textContent = (s.timeRangeHours || 24) + 'h';
   }
+}
 
-  connectSSE();
+// ==================== SSE ====================
+function connectSSE() {
+  if (state.es) state.es.close();
+  try {
+    state.es = new EventSource('/ws');
+    state.es.onopen = () => { el.sseDot.classList.add('on'); el.sseStatus.textContent = '已连接'; };
+    state.es.onmessage = () => loadArticles();
+    state.es.onerror = () => { el.sseDot.classList.remove('on'); el.sseStatus.textContent = '重连中'; state.es.close(); setTimeout(connectSSE, 5000); };
+  } catch {}
+}
+connectSSE();
 
-  // ==================== Health ====================
-  async function checkHealth() {
-    try {
-      var res = await fetch('/api/health');
-      if (res.ok) {
-        var data = await res.json();
-        healthBar.innerHTML =
-          '<span><span class="dot ok"></span>服务正常</span>' +
-          '<span>时间: ' + formatDate(data.timestamp) + '</span>' +
-          '<span>范围: ' + (data.settings && data.settings.timeRangeHours || 24) + 'h</span>';
-      } else {
-        healthBar.innerHTML = '<span><span class="dot err"></span>服务异常</span>';
-      }
-    } catch (e) {
-      healthBar.innerHTML = '<span><span class="dot err"></span>服务不可达</span>';
-    }
+// ==================== Auth State ====================
+function updateAuthState() {
+  const hasKey = !!getKey();
+  el.sidebarLocked.style.display = hasKey ? 'none' : 'flex';
+  el.sidebarContent.style.display = hasKey ? 'block' : 'none';
+  if (hasKey) {
+    el.sidebarContent.querySelector('.feed-form').classList.add('visible');
+    loadFeeds();
   }
-  checkHealth();
-  setInterval(checkHealth, 60000);
+}
 
-  // ==================== Init ====================
-  loadFeeds();
-  loadArticles();
+el.unlockBtn.onclick = openModal;
+
+el.saveBtn.onclick = async () => {
+  const key = el.apiKey.value.trim();
+  localStorage.setItem('rss_api_key', key);
+  if (key) {
+    updateAuthState();
+  }
+  const hours = Number(el.rangeSlider.value);
+  await api('/api/settings', {method:'PUT', body:JSON.stringify({timeRangeHours:hours})});
+  toast('已保存', 'success');
+  closeModal();
   loadSettings();
+};
 
-  // ==================== Utility ====================
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-  function escapeAttr(str) {
-    if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-});
+// ==================== Init ====================
+updateAuthState();
+loadArticles();
+loadSettings();
 </script>
 </body>
 </html>
