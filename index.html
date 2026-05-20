@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RSS EdgeOne</title>
+  <title>東风-RSS EdgeOne-easte.cc</title>
   <style>
     /* ==================== Theme ==================== */
     :root {
@@ -591,6 +591,22 @@
       .main { flex-direction: column; }
       .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border); }
     }
+
+    .footer {
+      text-align: center;
+      padding: 10px 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -656,6 +672,9 @@
       </div>
       <div class="articles" id="articles"></div>
     </div>
+  </div>
+  <div class="footer">
+    Powered by <a href="https://easte.cc" target="_blank">東风</a>
   </div>
 </div>
 
@@ -1013,7 +1032,28 @@ el.saveBtn.onclick = async () => {
   loadSettings();
 };
 
-// ==================== Init ====================
+// ==================== Copyright Protection ====================
+(function protectFooter() {
+  const FOOTER_HTML = 'Powered by <a href="https://easte.cc" target="_blank">東风</a>';
+  const FOOTER_CLASS = 'footer';
+
+  function ensureFooter() {
+    let footer = document.querySelector('.' + FOOTER_CLASS);
+    if (!footer || footer.innerHTML.indexOf('easte.cc') === -1) {
+      const app = document.querySelector('.app') || document.body;
+      const existing = document.querySelector('.' + FOOTER_CLASS);
+      if (existing) existing.remove();
+      footer = document.createElement('div');
+      footer.className = FOOTER_CLASS;
+      footer.innerHTML = FOOTER_HTML;
+      app.after(footer);
+    }
+  }
+
+  const observer = new MutationObserver(() => ensureFooter());
+  observer.observe(document.body, { childList: true, subtree: true });
+  ensureFooter();
+})();
 updateAuthState();
 loadArticles();
 loadSettings();
