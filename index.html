@@ -640,6 +640,9 @@
         <div class="feed-list" id="feed-list"></div>
 
         <div class="sidebar-section" style="margin-top: auto;">
+          <button class="btn btn-sm" id="export-opml-btn" style="width: 100%; margin-bottom: 6px;">⬇ 导出 OPML</button>
+          <button class="btn btn-sm" id="import-opml-btn" style="width: 100%; margin-bottom: 6px;">⬆ 导入 OPML</button>
+          <input type="file" id="opml-file" accept=".opml,.xml" style="display:none" />
           <button class="btn btn-sm" id="settings-btn" style="width: 100%;">⚙ 设置</button>
         </div>
       </div>
@@ -921,6 +924,39 @@ function openModal() {
   el.modal.classList.add('open');
 }
 function closeModal() { el.modal.classList.remove('open'); }
+
+// ==================== OPML ====================
+el.exportOpmlBtn = $('export-opml-btn');
+el.importOpmlBtn = $('import-opml-btn');
+el.opmlFile = $('opml-file');
+
+el.exportOpmlBtn.onclick = async () => {
+  const res = await api('/api/feeds.opml');
+  if (!res) return;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rss-subscriptions.opml';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('导出成功', 'success');
+};
+
+el.importOpmlBtn.onclick = () => el.opmlFile.click();
+
+el.opmlFile.onchange = async () => {
+  const file = el.opmlFile.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const res = await api('/api/feeds.opml', {method:'POST', body:text, headers:{'Content-Type':'application/xml'}});
+  el.opmlFile.value = '';
+  if (res?.ok) {
+    const data = await res.json();
+    toast(`导入成功：新增 ${data.added} 个，共 ${data.total} 个`, 'success');
+    loadFeeds();
+  }
+};
 
 el.settingsBtn.onclick = () => { el.apiKey.value = getKey(); openModal(); };
 el.modalClose.onclick = closeModal;

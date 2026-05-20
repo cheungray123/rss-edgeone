@@ -394,6 +394,56 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
+    // 导出订阅源 (OPML)
+    if (path === '/api/feeds.opml' && method === 'GET') {
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
+
+      const feeds = await getFeeds();
+      const opml = generateOPML(feeds);
+      return new Response(opml, {
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="rss-subscriptions.opml"',
+          ...corsHeaders
+        }
+      });
+    }
+
+    // 导入订阅源 (OPML)
+    if (path === '/api/feeds.opml' && method === 'POST') {
+      const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
+      if (auth.error) return auth.error;
+
+      const text = await context.request.text();
+      const importedFeeds = parseOPML(text);
+
+      if (importedFeeds.length === 0) {
+        return new Response(JSON.stringify({ error: '未找到有效的订阅源' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      }
+
+      const existingFeeds = await getFeeds();
+      const existingUrls = new Set(existingFeeds.map(f => f.url));
+      let addedCount = 0;
+
+      for (const feed of importedFeeds) {
+        if (!existingUrls.has(feed.url)) {
+          existingFeeds.push({
+            id: uuidv4(),
+            url: feed.url,
+            title: feed.title,
+            createdAt: new Date().toISOString()
+          });
+          addedCount++;
+        }
+      }
+
+      await saveFeeds(existingFeeds);
+      return new Response(JSON.stringify({ success: true, added: addedCount, total: existingFeeds.length }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
     // 获取文章列表 (不缓存)
     if (path === '/api/articles' && method === 'GET') {
       const lastCheck = await getLastCheck();
