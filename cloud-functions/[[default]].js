@@ -59,7 +59,23 @@ function getClientIP(request) {
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
-  return request.headers.get('x-real-ip') || 'unknown';
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp.trim();
+  }
+  // 如果没有代理头，使用一个随机标识（基于 user-agent 的哈希）
+  const userAgent = request.headers.get('user-agent') || 'unknown';
+  return `ua-${Math.abs(hashCode(userAgent))}`;
+}
+
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash;
 }
 
 // ==================== Blob Storage ====================
@@ -166,11 +182,13 @@ async function fetchAllFeeds() {
       if (pubDate < rangeStart) continue;
 
       newArticles.push({
+        id: uuidv4(),
         title: item.title || '无标题',
         link: item.link,
         pubDate: pubDate.toISOString(),
         author: item.creator || item.author || '',
-        feedTitle: result.feed.title || result.title || result.feed.url
+        feedTitle: result.feed.title || result.title || result.feed.url,
+        feedUrl: result.feed.url
       });
     }
   }
@@ -406,10 +424,10 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true, ...result }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 获取设置
+    // 获取设置 (不缓存)
     if (path === '/api/settings' && method === 'GET') {
       const settings = await getSettings();
-      return new Response(JSON.stringify(settings), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
+      return new Response(JSON.stringify(settings), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders } });
     }
 
     // 更新设置
