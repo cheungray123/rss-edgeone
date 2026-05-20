@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>東风-RSS EdgeOne-easte.cc</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
   <style>
     /* ==================== Theme ==================== */
     :root {
@@ -253,17 +254,19 @@
     .feed-item:hover .feed-item-delete { opacity: 0.6; }
     .feed-item-delete:hover { opacity: 1; color: var(--danger); }
 
-    /* Feed Form */
-    .feed-form {
-      display: none;
-      flex-direction: column;
-      gap: 6px;
-      padding: 12px;
+    .input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
     }
 
-    .feed-form.visible { display: flex; }
+    .input:focus { border-color: var(--accent); }
 
-    /* Locked State */
     .sidebar-locked {
       display: flex;
       flex-direction: column;
@@ -287,17 +290,6 @@
 
     .sidebar-locked .btn {
       width: 100%;
-    }
-
-    .input {
-      width: 100%;
-      padding: 8px 10px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text-primary);
-      font-size: 13px;
-      outline: none;
     }
 
     .input:focus { border-color: var(--accent); }
@@ -778,20 +770,12 @@
       <!-- 已登录状态 -->
       <div class="sidebar-content" id="sidebar-content" style="display:none;">
         <div class="sidebar-section">
-          <div class="sidebar-title">添加订阅</div>
-          <div class="feed-form">
-            <input type="url" class="input" id="feed-url" placeholder="RSS 地址" />
-            <input type="text" class="input" id="feed-title" placeholder="标题（可选）" />
-            <button class="btn btn-primary btn-sm" id="add-feed-btn" style="width:100%">添加</button>
-          </div>
-        </div>
-
-        <div class="sidebar-section">
           <div class="sidebar-title">订阅源</div>
         </div>
         <div class="feed-list" id="feed-list"></div>
 
         <div class="sidebar-section" style="margin-top: auto;">
+          <button class="btn btn-sm" id="add-feed-btn" style="width: 100%; margin-bottom: 6px;">+ 添加订阅</button>
           <button class="btn btn-sm" id="export-opml-btn" style="width: 100%; margin-bottom: 6px;">⬇ 导出 OPML</button>
           <button class="btn btn-sm" id="import-opml-btn" style="width: 100%; margin-bottom: 6px;">⬆ 导入 OPML</button>
           <input type="file" id="opml-file" accept=".opml,.xml" style="display:none" />
@@ -845,6 +829,30 @@
   </div>
 </div>
 
+<!-- Add Feed Modal -->
+<div class="modal-overlay" id="add-feed-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">添加订阅</div>
+      <button class="modal-close" id="add-feed-modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">RSS 地址</div>
+        <input type="url" class="input" id="feed-url" placeholder="https://example.com/feed.xml" />
+      </div>
+      <div class="form-group">
+        <div class="form-label">标题（可选）</div>
+        <input type="text" class="input" id="feed-title" placeholder="留空自动获取" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="add-feed-cancel">取消</button>
+      <button class="btn btn-primary" id="add-feed-confirm">添加</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast-container" id="toast"></div>
 
@@ -892,6 +900,10 @@ const el = {
   feedUrl: $('feed-url'),
   feedTitle: $('feed-title'),
   addFeedBtn: $('add-feed-btn'),
+  addFeedModal: $('add-feed-modal'),
+  addFeedModalClose: $('add-feed-modal-close'),
+  addFeedCancel: $('add-feed-cancel'),
+  addFeedConfirm: $('add-feed-confirm'),
   feedList: $('feed-list'),
   contentTitle: $('content-title'),
   contentCount: $('content-count'),
@@ -999,18 +1011,34 @@ function renderFeeds() {
   }
 }
 
-el.addFeedBtn.onclick = async () => {
+// ==================== Add Feed Modal ====================
+function openAddFeedModal() {
+  el.feedUrl.value = '';
+  el.feedTitle.value = '';
+  el.addFeedModal.classList.add('open');
+  el.feedUrl.focus();
+}
+function closeAddFeedModal() { el.addFeedModal.classList.remove('open'); }
+
+el.addFeedBtn.onclick = openAddFeedModal;
+el.addFeedModalClose.onclick = closeAddFeedModal;
+el.addFeedCancel.onclick = closeAddFeedModal;
+el.addFeedModal.onclick = e => { if (e.target === el.addFeedModal) closeAddFeedModal(); };
+
+el.addFeedConfirm.onclick = async () => {
   const url = el.feedUrl.value.trim();
   const title = el.feedTitle.value.trim();
   if (!url) return toast('请输入地址', 'error');
   const res = await api('/api/feeds', {method:'POST', body:JSON.stringify({url,title})});
   if (res?.ok) {
     toast('已添加', 'success');
-    el.feedUrl.value = '';
-    el.feedTitle.value = '';
+    closeAddFeedModal();
     loadFeeds();
   }
 };
+// Enter key to submit
+el.feedUrl.onkeydown = e => { if (e.key === 'Enter') el.addFeedConfirm.click(); };
+el.feedTitle.onkeydown = e => { if (e.key === 'Enter') el.addFeedConfirm.click(); };
 
 // ==================== Articles ====================
 async function loadArticles() {
@@ -1171,7 +1199,6 @@ function updateAuthState() {
   el.sidebarLocked.style.display = hasKey ? 'none' : 'flex';
   el.sidebarContent.style.display = hasKey ? 'block' : 'none';
   if (hasKey) {
-    el.sidebarContent.querySelector('.feed-form').classList.add('visible');
     loadFeeds();
   }
 }
