@@ -598,10 +598,102 @@
     }
 
     /* Responsive */
-    @media (max-width: 640px) {
-      .sidebar { width: 180px; }
+    @media (max-width: 768px) {
+      .header {
+        padding: 8px 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .header-right {
+        gap: 4px;
+      }
+      .header-right .btn {
+        font-size: 11px;
+        padding: 4px 7px;
+      }
+      .status {
+        font-size: 11px;
+      }
+
       .main { flex-direction: column; }
-      .sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border); }
+      .sidebar {
+        width: 100%;
+        max-height: 45px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .sidebar.open {
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border: none;
+        width: 100%;
+        text-align: left;
+      }
+      .sidebar-toggle::after {
+        content: '▾';
+        font-size: 12px;
+        transition: transform 0.3s;
+        color: var(--text-muted);
+      }
+      .sidebar.open .sidebar-toggle::after {
+        transform: rotate(180deg);
+      }
+
+      .sidebar-content,
+      .sidebar-locked {
+        display: none !important;
+      }
+      .sidebar.open .sidebar-content,
+      .sidebar.open .sidebar-locked {
+        display: block !important;
+      }
+
+      .sidebar-locked {
+        padding: 20px;
+      }
+
+      .articles {
+        padding: 10px;
+        gap: 10px;
+        grid-template-columns: 1fr;
+      }
+
+      .article {
+        padding: 12px;
+      }
+      .article-title {
+        font-size: 13px;
+      }
+      .article-summary {
+        font-size: 12px;
+      }
+
+      .content-header {
+        padding: 10px 12px;
+      }
+
+      .footer {
+        font-size: 10px;
+        padding: 8px 12px;
+      }
+    }
+
+    .sidebar-toggle {
+      display: none;
     }
 
     .footer {
@@ -643,7 +735,8 @@
   <!-- Main -->
   <div class="main">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
+      <button class="sidebar-toggle" id="sidebar-toggle">订阅源</button>
       <!-- 未登录状态 -->
       <div class="sidebar-locked" id="sidebar-locked">
         <div class="sidebar-locked-icon">🔐</div>
@@ -779,7 +872,9 @@ const el = {
   toast: $('toast'),
   sidebarLocked: $('sidebar-locked'),
   sidebarContent: $('sidebar-content'),
-  unlockBtn: $('unlock-btn')
+  unlockBtn: $('unlock-btn'),
+  sidebarToggle: $('sidebar-toggle'),
+  sidebar: $('sidebar')
 };
 
 // ==================== Theme ====================
@@ -1024,6 +1119,15 @@ function connectSSE() {
   } catch {}
 }
 connectSSE();
+
+// ==================== Mobile Sidebar Toggle ====================
+el.sidebarToggle.onclick = () => {
+  el.sidebar.classList.toggle('open');
+};
+// 点击文章区域自动关闭侧边栏
+el.articles.addEventListener('click', () => {
+  if (window.innerWidth <= 768) el.sidebar.classList.remove('open');
+});
 
 // ==================== Auth State ====================
 function updateAuthState() {
