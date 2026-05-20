@@ -345,6 +345,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 14px;
+      position: relative;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       animation: articleFadeIn 0.4s ease backwards;
     }
@@ -380,8 +381,8 @@
     .article-header {
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
+      padding-right: 20px;
     }
 
     .article-title {
@@ -406,23 +407,34 @@
     }
 
     .article-read-btn {
-      background: none;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--bg-tertiary);
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 12px;
-      padding: 2px 6px;
+      font-size: 10px;
+      padding: 1px 5px;
       border-radius: 4px;
-      transition: all 0.15s;
+      opacity: 0;
+      transition: opacity 0.15s;
+      line-height: 1.4;
+    }
+
+    .article:hover .article-read-btn {
+      opacity: 0.6;
     }
 
     .article-read-btn:hover {
-      background: var(--bg-tertiary);
+      opacity: 1 !important;
       color: var(--accent);
     }
 
     .article-read-btn.read {
+      opacity: 0.5;
       color: var(--accent);
+      background: transparent;
     }
 
     .article-source {
