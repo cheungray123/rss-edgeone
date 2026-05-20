@@ -129,11 +129,17 @@
       cursor: pointer;
       background: var(--bg-elevated);
       color: var(--text-primary);
-      transition: all 0.15s;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .btn:hover { background: var(--bg-hover); }
-    .btn:active { transform: scale(0.98); }
+    .btn:hover {
+      background: var(--bg-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+    .btn:active {
+      transform: scale(0.98) translateY(0);
+    }
 
     .btn-primary {
       background: var(--accent);
@@ -152,6 +158,28 @@
     .btn-ghost:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 
     .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+    /* Button loading state */
+    .btn.loading {
+      opacity: 0.6;
+      pointer-events: none;
+      position: relative;
+    }
+
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* Main */
     .main {
@@ -199,10 +227,10 @@
       cursor: pointer;
       font-size: 13px;
       color: var(--text-secondary);
-      transition: all 0.15s;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .feed-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .feed-item:hover { background: var(--bg-hover); color: var(--text-primary); transform: translateX(2px); }
     .feed-item.active { background: var(--accent-muted); color: var(--accent); }
 
     .feed-item-title {
@@ -308,6 +336,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 16px;
+      align-content: start;
     }
 
     /* Article Cards */
@@ -316,14 +345,37 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 14px;
-      margin-bottom: 10px;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: articleFadeIn 0.4s ease backwards;
     }
 
     .article:hover {
       border-color: var(--accent);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
     }
+
+    @keyframes articleFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Article staggered animation delay based on index */
+    .article:nth-child(1) { animation-delay: 0.05s; }
+    .article:nth-child(2) { animation-delay: 0.1s; }
+    .article:nth-child(3) { animation-delay: 0.15s; }
+    .article:nth-child(4) { animation-delay: 0.2s; }
+    .article:nth-child(5) { animation-delay: 0.25s; }
+    .article:nth-child(6) { animation-delay: 0.3s; }
+    .article:nth-child(7) { animation-delay: 0.35s; }
+    .article:nth-child(8) { animation-delay: 0.4s; }
+    .article:nth-child(n+9) { animation-delay: 0.45s; }
 
     .article-header {
       display: flex;
@@ -389,10 +441,20 @@
       background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.2s infinite;
-      border-radius: 4px;
+      border-radius: 8px;
+      min-height: 100px;
     }
 
-    .skeleton-article { height: 80px; margin-bottom: 10px; }
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .skeleton-grid .skeleton {
+      height: 120px;
+    }
+
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     /* Modal */
@@ -404,9 +466,15 @@
       z-index: 100;
       align-items: center;
       justify-content: center;
+      animation: modalOverlayIn 0.2s ease;
     }
 
     .modal-overlay.open { display: flex; }
+
+    @keyframes modalOverlayIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
 
     .modal {
       background: var(--bg-primary);
@@ -415,6 +483,18 @@
       padding: 20px;
       width: 90%;
       max-width: 380px;
+      animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
     }
 
     .modal-header {
@@ -461,15 +541,20 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 12px;
-      animation: toastIn 0.2s ease;
+      animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .toast.error { border-left: 3px solid var(--danger); }
     .toast.success { border-left: 3px solid var(--success); }
 
     @keyframes toastIn {
-      from { opacity: 0; transform: translateX(20px); }
-      to { opacity: 1; transform: translateX(0); }
+      from { opacity: 0; transform: translateX(30px) scale(0.95); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0) scale(1); }
+      to { opacity: 0; transform: translateX(30px) scale(0.95); }
     }
 
     /* Responsive */
@@ -712,7 +797,7 @@ el.addFeedBtn.onclick = async () => {
 
 // ==================== Articles ====================
 async function loadArticles() {
-  el.articles.innerHTML = '<div class="skeleton skeleton-article"></div>'.repeat(3);
+  el.articles.innerHTML = '<div class="skeleton-grid">' + '<div class="skeleton"></div>'.repeat(6) + '</div>';
   const res = await api('/api/articles');
   state.articles = res ? await res.json() : [];
   renderArticles();
@@ -746,9 +831,11 @@ function renderArticles() {
 
 el.refreshBtn.onclick = loadArticles;
 el.fetchBtn.onclick = async () => {
-  el.fetchBtn.disabled = true;
+  el.fetchBtn.classList.add('loading');
+  el.fetchBtn.textContent = '抓取中';
   const res = await api('/api/check', {method:'POST'});
-  el.fetchBtn.disabled = false;
+  el.fetchBtn.classList.remove('loading');
+  el.fetchBtn.textContent = '抓取';
   if (res?.ok) toast('抓取完成', 'success'), loadArticles();
 };
 
