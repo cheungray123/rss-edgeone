@@ -397,6 +397,34 @@
 
     .article-title a:hover { color: var(--accent); }
 
+    .article.read {
+      opacity: 0.6;
+    }
+
+    .article.read .article-title {
+      color: var(--text-muted);
+    }
+
+    .article-read-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+
+    .article-read-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--accent);
+    }
+
+    .article-read-btn.read {
+      color: var(--accent);
+    }
+
     .article-source {
       font-size: 11px;
       color: var(--accent);
@@ -664,8 +692,32 @@ const state = {
   feeds: [],
   articles: [],
   activeFeedId: null,
-  es: null
+  es: null,
+  readArticles: new Set(JSON.parse(localStorage.getItem('rss_read_articles') || '[]'))
 };
+
+// ==================== Read Management ====================
+function markAsRead(articleId) {
+  state.readArticles.add(articleId);
+  localStorage.setItem('rss_read_articles', JSON.stringify([...state.readArticles]));
+}
+
+function isRead(articleId) {
+  return state.readArticles.has(articleId);
+}
+
+function cleanReadArticles() {
+  const settings = state.settings || { timeRangeHours: 24 };
+  const cutoff = Date.now() - settings.timeRangeHours * 60 * 60 * 1000;
+  const cleaned = [...state.readArticles].filter(id => {
+    const timestamp = parseInt(id.split('-')[0], 10);
+    return timestamp > cutoff;
+  });
+  if (cleaned.length !== state.readArticles.size) {
+    state.readArticles = new Set(cleaned);
+    localStorage.setItem('rss_read_articles', JSON.stringify(cleaned));
+  }
+}
 
 // ==================== Elements ====================
 const $ = id => document.getElementById(id);
@@ -804,29 +856,53 @@ async function loadArticles() {
 }
 
 function renderArticles() {
+  // Clean old read records
+  cleanReadArticles();
+
   let list = state.articles;
   if (state.activeFeedId) {
     const f = state.feeds.find(f => f.id === state.activeFeedId);
     if (f) list = list.filter(a => a.feedTitle === f.title || a.feedTitle === f.url || a.feedUrl === f.url);
   }
 
-  el.contentCount.textContent = `${list.length} 篇`;
+  const readCount = list.filter(a => isRead(getArticleId(a))).length;
+  el.contentCount.textContent = `${list.length} 篇${readCount > 0 ? ` · ${readCount} 已读` : ''}`;
 
   if (!list.length) {
     el.articles.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">暂无文章</div></div>';
     return;
   }
 
-  el.articles.innerHTML = list.map(a => `
-    <div class="article">
+  el.articles.innerHTML = list.map(a => {
+    const id = getArticleId(a);
+    const read = isRead(id);
+    return `
+    <div class="article${read ? ' read' : ''}" data-id="${escAttr(id)}">
       <div class="article-source">${esc(a.feedTitle||'未知')}</div>
       <div class="article-header">
         <div class="article-title"><a href="${escAttr(a.link)}" target="_blank">${esc(a.title)}</a></div>
+        <button class="article-read-btn${read ? ' read' : ''}" data-id="${escAttr(id)}">${read ? '✓ 已读' : '标记已读'}</button>
       </div>
       <div class="article-meta">${a.author?`<span>${esc(a.author)}</span>`:''}<span>${fmt(a.pubDate)}</span></div>
       ${a.summary||a.contentSnippet?`<div class="article-summary">${esc(a.summary||a.contentSnippet)}</div>`:''}
     </div>
-  `).join('');
+  `;
+  }).join('');
+
+  // Add click handlers for read buttons
+  el.articles.querySelectorAll('.article-read-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      markAsRead(id);
+      renderArticles();
+    };
+  });
+}
+
+// Generate unique ID for article
+function getArticleId(article) {
+  return `${Date.parse(article.pubDate)}-${article.link}`;
 }
 
 el.refreshBtn.onclick = loadArticles;
@@ -856,8 +932,10 @@ async function loadSettings() {
   const res = await api('/api/settings');
   if (res) {
     const s = await res.json();
+    state.settings = s;
     el.rangeSlider.value = s.timeRangeHours || 24;
     el.rangeValue.textContent = (s.timeRangeHours || 24) + 'h';
+    cleanReadArticles();
   }
 }
 
