@@ -902,7 +902,7 @@ function renderArticles() {
     <div class="article${read ? ' read' : ''}" data-id="${escAttr(id)}">
       <div class="article-source">${esc(a.feedTitle||'未知')}</div>
       <div class="article-header">
-        <div class="article-title"><a href="${escAttr(a.link)}" target="_blank">${esc(a.title)}</a></div>
+        <div class="article-title"><a href="${escAttr(a.link)}" target="_blank" class="article-link" data-id="${escAttr(id)}">${esc(a.title)}</a></div>
         <button class="article-read-btn${read ? ' read' : ''}" data-id="${escAttr(id)}">${read ? '✓ 已读' : '标记已读'}</button>
       </div>
       <div class="article-meta">${a.author?`<span>${esc(a.author)}</span>`:''}<span>${fmt(a.pubDate)}</span></div>
@@ -917,6 +917,13 @@ function renderArticles() {
       e.stopPropagation();
       const id = btn.dataset.id;
       markAsRead(id);
+      renderArticles();
+    };
+  });
+  // 点击文章链接自动标记已读
+  el.articles.querySelectorAll('.article-link').forEach(link => {
+    link.onclick = () => {
+      markAsRead(link.dataset.id);
       renderArticles();
     };
   });
