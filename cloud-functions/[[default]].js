@@ -234,6 +234,38 @@ function isValidDate(date) {
   return date instanceof Date && !isNaN(date.getTime());
 }
 
+// ==================== OPML ====================
+
+function generateOPML(feeds) {
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<opml version="2.0">\n';
+  xml += '  <head>\n    <title>RSS Subscriptions</title>\n  </head>\n';
+  xml += '  <body>\n';
+  for (const feed of feeds) {
+    const title = (feed.title || feed.url || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const url = (feed.url || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    xml += `    <outline type="rss" text="${title}" title="${title}" xmlUrl="${url}"/>\n`;
+  }
+  xml += '  </body>\n';
+  xml += '</opml>';
+  return xml;
+}
+
+function parseOPML(xmlText) {
+  const feeds = [];
+  const urlPattern = /<outline[^>]*?\sxmlUrl\s*=\s*["']([^"']+)["'][^>]*\/?>/gi;
+  let match;
+  while ((match = urlPattern.exec(xmlText)) !== null) {
+    const url = match[1].trim();
+    if (!url) continue;
+    const titleMatch = match[0].match(/title\s*=\s*["']([^"']*)["']/i);
+    const textMatch = match[0].match(/text\s*=\s*["']([^"']*)["']/i);
+    const title = (titleMatch?.[1] || textMatch?.[1] || '').trim();
+    feeds.push({ url, title });
+  }
+  return feeds;
+}
+
 function getCorsHeaders(origin, allowedOrigins) {
   if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
     return { 'Access-Control-Allow-Origin': origin || '*' };
