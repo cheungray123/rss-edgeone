@@ -1112,7 +1112,13 @@ el.fetchBtn.onclick = async () => {
   const res = await api('/api/check', {method:'POST'});
   el.fetchBtn.classList.remove('loading');
   el.fetchBtn.textContent = '抓取';
-  if (res?.ok) toast('抓取完成', 'success'), loadArticles();
+  if (res?.ok) {
+    toast('抓取完成', 'success');
+    // 直接用 check 结果更新，避免缓存
+    const data = await res.json();
+    state.articles = data.articles || [];
+    renderArticles();
+  }
 };
 
 // ==================== Modal ====================
@@ -1152,6 +1158,7 @@ el.opmlFile.onchange = async () => {
     const data = await res.json();
     toast(`导入成功：新增 ${data.added} 个，共 ${data.total} 个`, 'success');
     loadFeeds();
+    loadArticles();
   }
 };
 
