@@ -330,10 +330,11 @@ export async function onRequest(context) {
   }
 
   let body = {};
+  let rawBody = '';
   if (method === 'POST' || method === 'PUT') {
     try {
-      const text = await context.request.text();
-      body = text ? JSON.parse(text) : {};
+      rawBody = await context.request.text();
+      body = rawBody ? JSON.parse(rawBody) : {};
     } catch { body = {}; }
   }
 
@@ -447,8 +448,7 @@ export async function onRequest(context) {
       const auth = requireAuth(context, url, corsHeaders, ADMIN_API_KEY);
       if (auth.error) return auth.error;
 
-      const text = await context.request.text();
-      const importedFeeds = parseOPML(text);
+      const importedFeeds = parseOPML(rawBody);
 
       if (importedFeeds.length === 0) {
         return new Response(JSON.stringify({ error: '未找到有效的订阅源' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
