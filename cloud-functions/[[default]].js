@@ -324,10 +324,10 @@ export async function onRequest(context) {
       });
     }
 
-    // 获取订阅源列表
+    // 获取订阅源列表 (不缓存)
     if (path === '/api/feeds' && method === 'GET') {
       const feeds = await getFeeds();
-      return new Response(JSON.stringify(feeds), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
+      return new Response(JSON.stringify(feeds), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders } });
     }
 
     // 添加订阅源
@@ -376,25 +376,25 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // 获取文章列表
+    // 获取文章列表 (不缓存)
     if (path === '/api/articles' && method === 'GET') {
       const lastCheck = await getLastCheck();
-      return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
+      return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders } });
     }
 
-    // 获取最新文章
+    // 获取最新文章 (不缓存)
     if (path === '/api/latest' && method === 'GET') {
       const lastCheck = await getLastCheck();
       const since = url.searchParams.get('since');
       if (!since) {
-        return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
+        return new Response(JSON.stringify(lastCheck?.articles || []), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders } });
       }
       const sinceDate = new Date(since);
       if (!isValidDate(sinceDate)) {
         return new Response(JSON.stringify({ error: '无效的 since 参数' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
       }
       const newArticles = (lastCheck?.articles || []).filter(a => new Date(a.pubDate) > sinceDate);
-      return new Response(JSON.stringify(newArticles), { headers: { 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL, ...corsHeaders } });
+      return new Response(JSON.stringify(newArticles), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...corsHeaders } });
     }
 
     // 手动触发检查
