@@ -1185,8 +1185,42 @@ function connectSSE() {
   try {
     state.es = new EventSource('/ws');
     state.es.onopen = () => { el.sseDot.classList.add('on'); el.sseStatus.textContent = '已连接'; };
-    state.es.onmessage = () => loadArticles();
     state.es.onerror = () => { el.sseDot.classList.remove('on'); el.sseStatus.textContent = '重连中'; state.es.close(); setTimeout(connectSSE, 5000); };
+
+    // 处理连接成功事件（包含当前文章）
+    state.es.addEventListener('connected', (e) => {
+      const data = JSON.parse(e.data);
+      if (data.articles) {
+        state.articles = data.articles;
+        renderArticles();
+      }
+    });
+
+    // 处理初始数据事件
+    state.es.addEventListener('init', (e) => {
+      const data = JSON.parse(e.data);
+      if (data.articles) {
+        state.articles = data.articles;
+        renderArticles();
+      }
+    });
+
+    // 处理新文章推送事件（直接用推送数据更新，不重复请求）
+    state.es.addEventListener('new-articles', (e) => {
+      const data = JSON.parse(e.data);
+      if (data.articles && data.articles.length > 0) {
+        // 将新文章合并到现有列表
+        const existingLinks = new Set(state.articles.map(a => a.link));
+        const newArticles = data.articles.filter(a => !existingLinks.has(a.link));
+        if (newArticles.length > 0) {
+          state.articles = [...newArticles, ...state.articles];
+          // 按时间排序
+          state.articles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+          renderArticles();
+          toast(`收到 ${newArticles.length} 篇新文章`, 'success');
+        }
+      }
+    });
   } catch {}
 }
 connectSSE();
