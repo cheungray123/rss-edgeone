@@ -20,12 +20,41 @@ const parser = new Parser({
 });
 
 async function fetchFeed(feed) {
-  try {
-    const parsed = await parser.parseURL(feed.url);
-    return { feed, items: parsed.items || [] };
-  } catch (error) {
-    return { feed, error: error.message, items: [] };
+  const maxRetries = 2;
+  const timeout = 10000;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const res = await fetch(feed.url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'RSS-EdgeOne/1.0' }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        if (attempt < maxRetries && res.status >= 500) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        return { feed, error: `HTTP ${res.status}`, items: [] };
+      }
+
+      const text = await res.text();
+      const parsed = parser.parseString(text);
+      return { feed, items: parsed.items || [] };
+    } catch (error) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      } else {
+        return { feed, error: error.message, items: [] };
+      }
+    }
   }
+  return { feed, error: 'Max retries exceeded', items: [] };
 }
 
 // ==================== Rate Limiting ====================
